@@ -1,18 +1,18 @@
 <a name="index">**目录**</a>
 
-<a href="#ch1">**1 什么是 ViewModel**</a>
-        * <a href="#ch1.1">1.1 先考虑两个场景</a>
-        * <a href="#ch1.2">1.2 缺点</a>
-        * <a href="#ch1.3">1.3 特别说明</a>
-        * <a href="#ch1.4">1.4 ViewModel 解决的问题</a>
-<a href="#ch2">**2 ViewModel 实现原理**</a>
-        * <a href="#ch2.1">2.1 ViewModel 类</a>
-        * <a href="#ch2.2">2.2 ViewModel 的构造过程</a>
-<a href="#ch3">**3 ViewModel 与配置无关的原理（与宿主 Controller 俱生俱灭）**</a>
-        * <a href="#ch3.1">3.1 ViewModelStore 树</a>
-        * <a href="#ch3.2">3.2 系统级的配置无关支持</a>
-<a href="#ch4">**4 FragmentActivity 中的 ViewModel 生命周期**</a>
-<a href="#ch4">**5 关于工厂模式的一点思考**</a>
+- <a href="#ch1">**1 什么是 ViewModel**</a>
+    * <a href="#ch1.1">1.1 先考虑两个场景</a>
+    * <a href="#ch1.2">1.2 缺点</a>
+    * <a href="#ch1.3">1.3 特别说明</a>
+    * <a href="#ch1.4">1.4 ViewModel 解决的问题</a>
+- <a href="#ch2">**2 ViewModel 实现原理**</a>
+    * <a href="#ch2.1">2.1 ViewModel 类</a>
+    * <a href="#ch2.2">2.2 ViewModel 的构造过程</a>
+- <a href="#ch3">**3 ViewModel 与配置无关的原理（与宿主 Controller 俱生俱灭）**</a>
+    * <a href="#ch3.1">3.1 ViewModelStore 树</a>
+    * <a href="#ch3.2">3.2 系统级的配置无关支持</a>
+- <a href="#ch4">**4 FragmentActivity 中的 ViewModel 生命周期**</a>
+- <a href="#ch4">**5 关于工厂模式的一点思考**</a>
 
 <br>
 <br>
