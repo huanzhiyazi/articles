@@ -12,7 +12,8 @@
     * <a href="#ch3.1">3.1 ViewModelStore 树</a>
     * <a href="#ch3.2">3.2 系统级的配置无关支持</a>
 - <a href="#ch4">**4 FragmentActivity 中的 ViewModel 生命周期**</a>
-- <a href="#ch4">**5 关于工厂模式的一点思考**</a>
+- <a href="#ch5">**5 多 Controller 共享 ViewModel**</a>
+- <a href="#ch6">**6 关于工厂模式的一点思考**</a>
 
 <br>
 <br>
@@ -241,7 +242,22 @@ getLifecycle().addObserver(new LifecycleEventObserver() {
 <br>
 <br>
 
-### <a name="ch5">5 关于工厂模式的一点思考</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
+### <a name="ch5">5 多 Controller 共享 ViewModel</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
+
+我们参考第3.1节的 ViewModelStore 树可知，如果多个 Controller 需要共享同一个 ViewModel 的话，我们只需要将该 ViewModel 保存在这些 Controller 共同的父 Controller 的 ViewModelStore 中即可，而这些子 Controller 可以通过如下方式获取这个共享的 ViewModel：
+
+```java
+[Fragment/FragmentActivity] parentContrl = ... // 共同的父 Controller
+final CommonViewModel viewModel = ViewModelProviders.of(parentContrl).get(CommonViewModel.class);
+```
+
+这样我们就解决了在 1.1 节中提到的第二个场景共享数据的问题。
+
+<br>
+<br>
+
+
+### <a name="ch6">6 关于工厂模式的一点思考</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
 
 回到第2节中如何获取一个 ViewModel 实例的过程，我们发现，ViewModelProviders 实际相当于一个 **简单工厂** 模式，而 Facotry 则是一个 **工厂方法** 模式，前者根据不同的参数构造不同的 ViewModelProvider，后者则可以实现不同的具体 Factory 来构造不同的 ViewModel。
 
