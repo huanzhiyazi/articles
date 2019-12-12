@@ -133,7 +133,7 @@ public <T extends ViewModel> T get(@NonNull String key, @NonNull Class<T> modelC
 
 将 ViewModelStore 作为配置无关数据进行保持，在 FragmentActivity 中是这么做的：
 
-<center>![Retain ViewModelStore in activity](images/activity_retain_nonconfig.png "Retain ViewModelStore in activity")</center>
+![Retain ViewModelStore in activity](images/activity_retain_nonconfig.png "Retain ViewModelStore in activity")
 
 是的，流程就是这么简单，只需要将 ViewModelStore 封装在一个特殊对象中保存并在 FragmentActivity 的 onRetainNonConfigurationInstance() 方法中返回即可：
 
@@ -166,7 +166,7 @@ public final Object onRetainNonConfigurationInstance() {
 
 另外在 Fragment 层中，必须区分 Fragment 实例销毁时到底是因为调用了 onDestroy 还是配置发生了变化，如果是前者则必须清理自身持有的 ViewModelStore，如果是后者则不能清理：
 
-<center>![How to clear Fragment's ViewModelStore](images/fragment_viewmodelstore_clear.png "How to clear Fragment's ViewModelStore")</center>
+![How to clear Fragment's ViewModelStore](images/fragment_viewmodelstore_clear.png "How to clear Fragment's ViewModelStore")
 
 如图所示，也说明了 Fragment 的 ViewModel 生命周期与该 Fragment 生命周期是一致的。
 
