@@ -1,24 +1,36 @@
 <a name="index">**目录**</a>
 
-<a href="#ch1">1 什么是 ViewModel</a>
+<a href="#ch1">**1 什么是 ViewModel**</a>
+        * <a href="#ch1.1">1.1 先考虑两个场景</a>
+        * <a href="#ch1.2">1.2 缺点</a>
+        * <a href="#ch1.3">1.3 特别说明</a>
+        * <a href="#ch1.4">1.4 ViewModel 解决的问题</a>
+<a href="#ch2">**2 ViewModel 实现原理**</a>
+        * <a href="#ch2.1">2.1 ViewModel 类</a>
+        * <a href="#ch2.2">2.2 ViewModel 的构造过程</a>
+<a href="#ch3">**3 ViewModel 与配置无关的原理（与宿主 Controller 俱生俱灭）**</a>
+        * <a href="#ch3.1">3.1 ViewModelStore 树</a>
+        * <a href="#ch3.2">3.2 系统级的配置无关支持</a>
+<a href="#ch4">**4 FragmentActivity 中的 ViewModel 生命周期**</a>
+<a href="#ch4">**5 关于工厂模式的一点思考**</a>
 
 <br>
 <br>
 
 ### <a name="ch1">1 什么是 ViewModel</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
 
-#### 1.1 先考虑两个场景
+#### <a name="ch1.1">1.1 先考虑两个场景</a>
 
 - 场景一：我们开发的 APP 可以转屏，转屏后将触发 Controller(Activity or Fragment) 的重建，为了维护转屏前后数据的一致性，我们要么将需要维护的数据以 Bundle 的形式在 onSaveInstance 中保存，必要的时候需要对复合数据实现繁琐的 Parceable 接口，如果数据量太大则我们必须将数据持久化，在转屏后重新拉取数据（from database or networks）；
 - 场景二：我们的 Activity 中同时维护了多个 Fragment，每个 Fragment 需要共享一些数据，传统的做法是由宿主 Activity 持有共享数据，并暴露数据获取接口给各个寄生 Fragment。
 
-#### 1.2 缺点
+#### <a name="ch1.2">1.2 缺点</a>
 随着业务规模的扩大，以上的两种场景在传统实现方法中显得越来越繁琐且不易维护，且数据模块不易独立进行测试。
 
-#### 1.3 特别说明
+#### <a name="ch1.3">1.3 特别说明</a>
 关于场景一，同样的场景还适用于各种配置相关的信息发生变化的情况，比如键盘、系统字体、语言区域等，它们的共同作用是都会导致当前 Controller 的重建。
 
-#### 1.4 ViewModel 解决的问题
+#### <a name="ch1.4">1.4 ViewModel 解决的问题</a>
 ViewModel 是 android 新的 mvvm 框架的一部分，它的出现就是为了解决以上两个场景中数据与 Controller 耦合过度的问题。其 **基本原理** 是：*维护一个与配置无关的对象，该对象可存储 Controller 中需要的任何数据，其生命周期与宿主 Controller 的生命周期保持一致，不因 Controller 的重建而失效（注意：Controller 的重建仍然在 Controller 生命周期内，并不会产生一个新的生命周期，即 Controller 的 onDestroy 并不会调用）*
 
 这意味着无论是转屏还是系统字体变化等因配置变化产生的 Controller 重建都不会回收 ViewModel 中维护的数据，重建的 Controller 仍然可以从同一个 ViewModel 中通过获取数据恢复状态。
@@ -27,13 +39,13 @@ ViewModel 是 android 新的 mvvm 框架的一部分，它的出现就是为了�
 <br>
 
 
-### 2 ViewModel 实现原理
+### <a name="ch2">2 ViewModel 实现原理</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
 
-#### 2.1 ViewModel 类
+#### <a name="ch2.1">2.1 ViewModel 类</a>
 如果大家去看一下 ViewModel 类的实现，会发现虽然它是一个 abstract 类，但是没有暴露任何外部可访问的方法，其预留的方法都是 package 访问权限的，
 其预留了一些数据清理工作的功能，推测可能是系统保留用作以后扩展，因为与我们对 ViewModel 原理的理解没有什么关联，我们暂且略过。
 
-#### 2.2 ViewModel 的构造过程
+#### <a name="ch2.2">2.2 ViewModel 的构造过程</a>
 我们用一个结构图来剖析 ViewModel 的构造过程：
 
 ![How to get a ViewModel](https://github.com/huanzhiyazi/articles/blob/master/%E6%8A%80%E6%9C%AF/android/mvvm%E4%B9%8BViewModel%E7%AF%87/images/how_to_get_viewmodel.png "How to get a ViewModel")
@@ -116,13 +128,13 @@ public <T extends ViewModel> T get(@NonNull String key, @NonNull Class<T> modelC
 <br>
 <br>
 
-### 3 ViewModel 与配置无关的原理（与宿主 Controller 俱生俱灭）
+### <a name="ch3">3 ViewModel 与配置无关的原理（与宿主 Controller 俱生俱灭）</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
 
 上一节我们说到，ViewModel 之所以能够与宿主 Controller 保持生命周期一致，是因为存储它的 ViewModelStore 与宿主 Controller 生命周期一致。那么为什么 ViewModelStore 能够保持和 Controller 生命周期一致呢？
 
 这里我们需要先理清 FragmentActivity 和其寄生的 Fragment 的 ViewModelStore 之间的关系：
 
-#### 3.1 ViewModelStore 树
+#### <a name="ch3.1">3.1 ViewModelStore 树</a>
 
 ![ViewModelStore Tree](https://github.com/huanzhiyazi/articles/blob/master/%E6%8A%80%E6%9C%AF/android/mvvm%E4%B9%8BViewModel%E7%AF%87/images/viewmodelstore_tree.png "ViewModelStore Tree")
 
@@ -136,7 +148,7 @@ public <T extends ViewModel> T get(@NonNull String key, @NonNull Class<T> modelC
 
 那么在配置发生变化的时候，ViewModelStore 树如何保持不变呢？
 
-#### 3.2 系统级的配置无关支持
+#### <a name="ch3.2">3.2 系统级的配置无关支持</a>
 
 将 ViewModelStore 作为配置无关数据进行保持，在 FragmentActivity 中是这么做的：
 
@@ -205,7 +217,7 @@ if (beingRemoved || mNonConfig.shouldDestroy(f)) {
 <br>
 <br>
 
-### 4 FragmentActivity 中的 ViewModel 生命周期
+### <a name="ch4">4 FragmentActivity 中的 ViewModel 生命周期</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
 
 最后，我们还需要说明一下，FragmentActivity 中的 ViewModel 的生命周期是如何保持与 FragmentActivity 一致的，除了上一节中 FragmentActivity.onRetainNonConfigurationInstance() 中的配置无关保证以外，还需要保证在 Activity 真正销毁的时候其所持有的 ViewModel 也应该被清理。
 
@@ -229,7 +241,7 @@ getLifecycle().addObserver(new LifecycleEventObserver() {
 <br>
 <br>
 
-### 5 关于工厂模式的一点思考
+### <a name="ch5">5 关于工厂模式的一点思考</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
 
 回到第2节中如何获取一个 ViewModel 实例的过程，我们发现，ViewModelProviders 实际相当于一个 **简单工厂** 模式，而 Facotry 则是一个 **工厂方法** 模式，前者根据不同的参数构造不同的 ViewModelProvider，后者则可以实现不同的具体 Factory 来构造不同的 ViewModel。
 
