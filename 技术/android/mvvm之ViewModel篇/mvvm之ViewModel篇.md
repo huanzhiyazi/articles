@@ -252,7 +252,9 @@ getLifecycle().addObserver(new LifecycleEventObserver() {
 
 所以我们看到，当一个对象的构造是采用了统一的规则时（比如 ViewModelProvider），适合用简单工厂模式来实现，因为该规则本身可以被封装；而当一个对象的构造方式没有统一规则可以遵循，其实现细节更多与业务相关时，其可被封装的部分仅为它的 new 方法，这时更适合用工厂方法模式来实现。
 
-
+<br>
+<br>
+<br>
 
 
 > 说明：
