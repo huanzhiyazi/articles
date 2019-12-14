@@ -143,7 +143,8 @@ public <T extends ViewModel> T get(@NonNull String key, @NonNull Class<T> modelC
 
 - 每个 ViewModelStore 依附于其宿主 Controller，所以各个 Controller 的 ViewModelStore 组成一个树状的引用关系；
 - 处于顶层的 ViewModelStore 依附于 FragmentActivity，它除了保存用户级的 ViewModel 以外，还保存其儿子 Fragment 的 FragmentManagerViewModel；
-- FragmentManagerViewModel 主要维护两个对象：所属 Fragment 的 ViewModelStore 和其儿子 Fragment 的 FragmentManagerViewModel 的引用，注意图中的红色部分，所有二级及以下的子孙 Fragment 都共用同一个父节点的 ChildFragmentManagerModel，这样当父 Fragment 销毁的时候方便一次性清除其所有子 Fragment 的 ViewModelStore；
+- FragmentManagerViewModel 主要维护两个对象：所属 Fragment 的 ViewModelStore 和其儿子 Fragment 的 FragmentManagerViewModel 的引用，注意图中的红色部分，所有二级及以下的子孙 Fragment 都共用同一个父节点的 Child FragmentManagerModel，这样当父 Fragment 销毁的时候方便一次性清除其所有子 Fragment 共用的 FragmentManagerViewModel；
+- 但是二级及以下的子孙 Fragment 的 ViewModelStore 都是独立的，一个 Fragment 自身的 ViewModel 变化应该不影响其兄弟节点的 ViewModel，所以可以推导出，它们共同的 FragmentManagerViewModel 应该是维护了一个保存各个子 Fragment 的 ViewModelStore 的容器，大家如果细看 FragmentManagerViewModel 的源代码，实际上就是这么做的。
 
 **所以，我们看到，处于顶层的 FragmentActivity 的 ViewModelStore 是一个超级 Store，它引用了所有的 ViewModels，包括自身的数据、所有子孙 Fragment 的 ViewModels，只要各子孙 Fragment 不清除自有 ViewModelStore，则所有的数据都维护在这棵 ViewModelStore 树中。**
 
