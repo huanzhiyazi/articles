@@ -10,6 +10,9 @@
 - <a href="#ch3">**3 LiveData 的事件变化**</a>
 - <a href="#ch4">**4 LifecycleOwner 的事件变化**</a>
     * <a href="#ch4.1">4.1 Lifecycle 接口的实现——LifecycleRegistry</a>
+        * <a href="#ch4.1.1">4.1.1 LifecycleRegistry 的订阅实现</a>
+        * <a href="#ch4.1.2">4.1.2 LifecycleRegistry 中的事件流</a>
+        * <a href="#ch4.1.3">4.1.3 处理生命周期的变化</a>
 
 <br>
 <br>
@@ -209,3 +212,75 @@ public class Activity/Fragment implements LifecycleOwner {
 当然，在具体的源代码中，与上述伪代码会有一些出入，但是大体的结构是一致的。在 Jetpack 框架中，这个 Lifecycle 的实现者叫做 LifecycleRegistry。所以我们这里重点需要关注的就是 LifecycleRegistry 这个 Lifecycle 的代理接口的实现类是如何通知生命周期事件变化的。
 
 #### <a name="ch4.1">4.1 Lifecycle 接口的实现——LifecycleRegistry</a>
+
+##### <a name="ch4.1.1">4.1.1 LifecycleRegistry 的订阅实现</a>
+
+如 2.2 节所述，通过 LiveData.observe(owner, user-defined observer)，LifecycleOwner 的业务层向 LiveData 订阅数据变化，而在 LiveData.observe() 方法内，同时会自动通过 Lifecycle.addObserver(LiveData-defined observer) 向 LifecycleOwner 订阅生命周期变化：
+
+```java
+// LiveData.observe()
+@MainThread
+public void observe(@NonNull LifecycleOwner owner, @NonNull Observer<? super T> observer) {
+
+    //...省略非关键代码
+
+    LifecycleBoundObserver wrapper = new LifecycleBoundObserver(owner, observer);
+
+    //...省略非关键代码
+
+    // 向 LifecycleOwner 发起订阅
+    owner.getLifecycle().addObserver(wrapper);
+}
+```
+
+以上方法内的 owner.getLifecycle() 的实际对象即为 LifecycleRegistry，我们来看一下 LifecycleRegistry.addObserver() 的基本订阅流程：
+
+![LifecycleRegistry addObserver](images/lifecycleregistry_addobserver.png "LifecycleRegistry addObserver")
+
+从整个流程来看，总体可以分为三步：
+
+- 第一步是初始化观察者对象的状态，并将观察者缓存入队；
+- 第二步是以模拟派发生命周期事件的形式，将新加入的观察者的状态提升到目前为止可提升的最大状态；
+- 第三步是同步所有观察者的状态到全局状态。
+
+我们可以看到，最后所有的观察者的状态都要同步到全局状态，全局状态即为 LifecyclerOwner 最新的状态。那么为什么需要进行这么繁琐的逐步模拟派发事件来进行同步呢？直接一步到位不行么？
+
+我们可以考虑一个生命周期感知组件 LifeLocation，其功能是用于进行定位，它订阅了 LifecycleOwner，我们假设 LifeLocation 需要在 CREATED 的时候进行一些必要的初始化，而在 STARTED 的时候开始执行定位操作。假如在 LifecycleRegistry 中的状态同步可以一步同步到全局状态，那么有可能当前的全局状态已经是 RESUMED 的了，这样 LifeLocation 既得不到初始化，也无从启用定位功能了。
+
+所以，以上这种看似繁琐的模拟派发状态事件的步骤是完全必要的，它让用户自定义的生命周期感知组件的状态切换流程是可预测的。
+
+##### <a name="ch4.1.2">4.1.2 LifecycleRegistry 中的事件流</a>
+
+我们在 4.1.1 节中的流程图的第 6 步中提到，要根据 observer.state 来计算下一个状态事件，也就是说按照事件的流向，根据当前的状态，下一个要发生的事件是什么。我们修改一下 1.2 节的时序图如下：
+
+![LifecycleRegistry events flow](images/lifecycleregistry_event_flow.png "LifecycleRegistry events flow")
+
+观察到图中左边的蓝色箭头，举个例子，假如当前的状态是 CREATED，那么接下来要发生的事件应该是 ON_START。蓝色箭头指示的事件流方向是生命周期由无到生的过程，我们称为 upEvent 流；与此对应，右边的红色箭头指示的事件流方向是生命周期由生到死的过程，我们称之为 downEvent。
+
+4.1.1 节中的流程图的第 6 步中正好需要进行 upEvent 流操作。除此以外，我们在第 7 步同步到全局状态时，还需要用到 upEvent 和 downEvent 流操作，且在 LifecycleOwner 的每一次生命周期的变化中，都需要进行上述第 7 步的状态同步操作。接下来我们就看一看，当 LifecycleOwner 生命周期变化后，发生了什么。
+
+##### <a name="ch4.1.3">4.1.3 处理生命周期的变化</a>
+
+在 4 节开头我们描述了 LifecycleImpl.handleLifecycleEvent() 方法，在 LifecycleRegistry 中也有一个同名的方法，其功能就是处理 LifecycleOwner 生命周期的变化。handleLifecycleEvent() 的处理过程是这样的：
+
+![LifecycleRegistry handleLifecycleEvent](images/handlelifecycleevent.png "LifecycleRegistry handleLifecycleEvent")
+
+如图所示：
+
+- Sync 标记的部分是进行状态同步的核心流程，同时也是 4.1.1 节流程图中的第 7 步的具体实现；
+- 每一次生命周期的变化有可能是从无到生的 up 变化，也有可能是从生到死的 down 变化；
+- 如果是 up 变化，则需要进行 upEvent 流处理，如果是 down 变化，则需要进行 downEvent 流处理；
+- 根据 4.1.1 节的描述，我们可以得出，在观察者队列中的所有观察者，从最老（最开始）到最新（最末），必定维持一个不变性质：非降序排列；
+- 所以当 STATE < eldestState 时，说明观察者队列中的所有观察者状态都大于全局状态，这时候说明生命周期变化顺序是 down 方向的，需要进行 downEvent 流处理；
+- 而当 STATE > newestState 时，说明观察者队列中的所有观察者状态都小于全局状态，这时候说明生命周期变化顺序是 up 方向的，需要进行 upEvent 流处理；
+- 无论是 downEvent 流还是 upEvent 流，都会逐步派发生命周期事件给各个观察者。
+
+
+关于 downEvent 流和 upEvent 流，我画了一张更加形象的图用以加深理解：
+
+![downEvent and upEvent](images/downevent_and_upevent.png "downEvent and upEvent")
+
+
+
+
+
