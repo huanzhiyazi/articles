@@ -13,6 +13,7 @@
         * <a href="#ch4.1.1">4.1.1 LifecycleRegistry 的订阅实现</a>
         * <a href="#ch4.1.2">4.1.2 LifecycleRegistry 中的事件流</a>
         * <a href="#ch4.1.3">4.1.3 处理生命周期的变化</a>
+- <a href="#ch5">**5. 关于观察者模式的一点思考**</a>
 
 <br>
 <br>
@@ -29,7 +30,7 @@ Jetpack 框架让 Controller 变得可感知，成为一个生命周期事件变
 
 LifecycleOwner 中维护一个叫做 Lifecycle 的接口，它规定了生命周期的状态和状态切换的事件流模型。在 android developer 的官方文档中，给出了一个非常清晰的时序图来说明这个模型：
 
-![Lifecycle States](images/lifecycle_states.svg "Lifecycle States")
+![Lifecycle States](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/mvvm%E4%B9%8BLiveData%E7%AF%87/images/lifecycle_states.svg?sanitize=true "Lifecycle States")
 
 
 - 生命周期的状态总共有 5 个：DESTROYED，INITIALIZED，CREATED，STARTED，RESUMED；
@@ -100,7 +101,7 @@ private void considerNotify(ObserverWrapper observer) {
 
 以上，只为了说明一个问题：LiveData 需要订阅 LifecycleOwner，感知其生命周期变化：
 
-![LiveData observe LifecycleOwner](images/livedata_observe_lifecycleowner.png "LiveData observe LifecycleOwner")
+![LiveData observe LifecycleOwner](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/mvvm%E4%B9%8BLiveData%E7%AF%87/images/livedata_observe_lifecycleowner.png "LiveData observe LifecycleOwner")
 
 图示说明，LiveData 订阅 LifecycleOwner，而由 LifecycleOwner.Lifecycle 代理完成生命周期状态变化通知，所以 LiveData 直接能感知的是 Lifecycle。
 
@@ -110,7 +111,7 @@ LifecycleOwner 在 STARTED 和 RESUMED 的状态下可以根据 LiveData 更新 
 
 在实际实现当中，LifecycleOwner 作为抽象层并不具体负责订阅 LiveData，而是由业务层在 LifecycleOwner 中完成具体的订阅工作，此时我们称 LifecycleOwner 为 Controller 更合适，虽然它们往往是同一个东西：
 
-![LifecycleOwner observe LiveData](images/lifecycleowner_observe_livedata.png "LifecycleOwner observe LiveData")
+![LifecycleOwner observe LiveData](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/mvvm%E4%B9%8BLiveData%E7%AF%87/images/lifecycleowner_observe_livedata.png "LifecycleOwner observe LiveData")
 
 注意图示，一个 User-defined Observer 必须和一个 LifecycleOwner 唯一绑定，否则将无法订阅。试想，如果一个 Observer 同时绑定两个 LifecycleOwner：L1 和 L2，假如 L1 处于 RESUMED 的状态，而 L2 处于 DESTROYED 的状态，那么 LiveData 将无所适从：如果遵循 L1 的状态，将变化通知给 Observer，则更新 L2 会出错；如果遵循 L2 的状态，不将变化通知给 Observer，则 L1 得不到及时更新。
 
@@ -118,7 +119,7 @@ LifecycleOwner 在 STARTED 和 RESUMED 的状态下可以根据 LiveData 更新 
 
 LiveData 和 LifecycleOwner 之间因为需要相互观察对方状态的变化，从而需要实现双向订阅；同时，为了支持良好的可扩展能力，各自都维护了一个观察者列表，形成一个多对多的双向订阅网络：
 
-![Bidirection Subscribes](images/bidirection_subscribes.png "Bidirection subscribes")
+![Bidirection Subscribes](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/mvvm%E4%B9%8BLiveData%E7%AF%87/images/bidirection_subscribes.png "Bidirection subscribes")
 
 <br>
 <br>
@@ -127,7 +128,7 @@ LiveData 和 LifecycleOwner 之间因为需要相互观察对方状态的变化�
 
 LiveData 值更新之后的需要通知订阅者（观察者），其通知流程非常简单：
 
-![LiveData setValue](images/livedata_setvalue.png "LiveData setValue")
+![LiveData setValue](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/mvvm%E4%B9%8BLiveData%E7%AF%87/images/livedata_setvalue.png "LiveData setValue")
 
 其中，判断观察者是否激活，即判断 LifecycleOwner 是否处于 STARTED 或 RESUMED 状态，在 2.1 节中已有说明。
 
@@ -235,7 +236,7 @@ public void observe(@NonNull LifecycleOwner owner, @NonNull Observer<? super T> 
 
 以上方法内的 owner.getLifecycle() 的实际对象即为 LifecycleRegistry，我们来看一下 LifecycleRegistry.addObserver() 的基本订阅流程：
 
-![LifecycleRegistry addObserver](images/lifecycleregistry_addobserver.png "LifecycleRegistry addObserver")
+![LifecycleRegistry addObserver](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/mvvm%E4%B9%8BLiveData%E7%AF%87/images/lifecycleregistry_addobserver.png "LifecycleRegistry addObserver")
 
 从整个流程来看，总体可以分为三步：
 
@@ -253,7 +254,7 @@ public void observe(@NonNull LifecycleOwner owner, @NonNull Observer<? super T> 
 
 我们在 4.1.1 节中的流程图的第 6 步中提到，要根据 observer.state 来计算下一个状态事件，也就是说按照事件的流向，根据当前的状态，下一个要发生的事件是什么。我们修改一下 1.2 节的时序图如下：
 
-![LifecycleRegistry events flow](images/lifecycleregistry_event_flow.png "LifecycleRegistry events flow")
+![LifecycleRegistry events flow](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/mvvm%E4%B9%8BLiveData%E7%AF%87/images/lifecycleregistry_event_flow.png "LifecycleRegistry events flow")
 
 观察到图中左边的蓝色箭头，举个例子，假如当前的状态是 CREATED，那么接下来要发生的事件应该是 ON_START。蓝色箭头指示的事件流方向是生命周期由无到生的过程，我们称为 upEvent 流；与此对应，右边的红色箭头指示的事件流方向是生命周期由生到死的过程，我们称之为 downEvent。
 
@@ -263,7 +264,7 @@ public void observe(@NonNull LifecycleOwner owner, @NonNull Observer<? super T> 
 
 在 4 节开头我们描述了 LifecycleImpl.handleLifecycleEvent() 方法，在 LifecycleRegistry 中也有一个同名的方法，其功能就是处理 LifecycleOwner 生命周期的变化。handleLifecycleEvent() 的处理过程是这样的：
 
-![LifecycleRegistry handleLifecycleEvent](images/handlelifecycleevent.png "LifecycleRegistry handleLifecycleEvent")
+![LifecycleRegistry handleLifecycleEvent](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/mvvm%E4%B9%8BLiveData%E7%AF%87/images/handlelifecycleevent.png "LifecycleRegistry handleLifecycleEvent")
 
 如图所示：
 
@@ -278,9 +279,37 @@ public void observe(@NonNull LifecycleOwner owner, @NonNull Observer<? super T> 
 
 关于 downEvent 流和 upEvent 流，我画了一张更加形象的图用以加深理解：
 
-![downEvent and upEvent](images/downevent_and_upevent.png "downEvent and upEvent")
+![downEvent and upEvent](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/mvvm%E4%B9%8BLiveData%E7%AF%87/images/downevent_and_upevent.png "downEvent and upEvent")
+
+至此，整个 LiveData 和 Lifecycle 的原理就介绍完成了。
+
+<br>
+<br>
+
+###<a name="ch5">5. 关于观察者模式的一点思考</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
+
+不难看出，LiveData 和 Lifecycle 的核心是观察者模式。无论是 LiveData 还是 Lifecycle，它们的共同点就是都需要维护一个稳定的状态机：
+
+- LiveData 的状态机就是数据值的变化，每个值就是一个状态，理论上可以是一个无限状态机；
+- Lifecycle 的状态机就是生命周期的变化，每个生命周期阶段就是一个状态，它是一个有限状态机。
+
+在涉及到状态机模型时，如果我们需要感知状态机当前的状态，一般有两种方式：主动询问和被动通知。在复杂的业务中，主动询问状态机往往是不好的实践；而被动通知，可以让我们的业务按照状态进行清晰的分段，更易于模块化和测试。观察者模式就是一种很好的被动通知模式。
+
+所以，当我们的对象维护了一个状态机的时候，可以考虑是否可以采用观察者模式来读取状态。但是需要注意的是，观察者模式内部是维护了一个观察者引用的列表的，当状态发生变化的时候，是采用顺序遍历的方式逐个进行通知的，可以想到，当一个被观察者中维护的观察者数量很多，其中又有很多观察者对状态的响应处理都比较耗时的话，会出现性能瓶颈。尤其是在基于单线程的 UI 环境下，更加需要引起注意，我们通常应该有一个机制来移除不再需要的观察者，以减轻通知负载。
+
+<br>
+<br>
+<br>
 
 
-
+> 说明：
+> 
+> 该文档参考的 androidx 版本为 
+> 
+> core: 1.1.0
+> 
+> lifecyle: 2.2.0-alpha01
+> 
+> fragment: 1.1.0-alpha09
 
 
