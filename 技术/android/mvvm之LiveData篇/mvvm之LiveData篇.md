@@ -99,6 +99,8 @@ private void considerNotify(ObserverWrapper observer) {
 }
 ```
 
+严格的说这里并不应该叫 LiveData 的激活状态，而应该是向 LiveData 进行订阅的 LifecycleOwner 的激活状态，此时 LifecycleOwner 作为观察者观察 LiveData 的变化。所以这里可能叫 LiveData 在每一个 LifecycleOwner 上的分身的激活状态更合适，为了表述方便，我们就统称叫 LiveData 的激活状态。我们将在 2.2 节描述 LifecycleOwner 如何订阅 LiveData。
+
 以上，只为了说明一个问题：LiveData 需要订阅 LifecycleOwner，感知其生命周期变化：
 
 ![LiveData observe LifecycleOwner](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/mvvm%E4%B9%8BLiveData%E7%AF%87/images/livedata_observe_lifecycleowner.png "LiveData observe LifecycleOwner")
@@ -120,6 +122,8 @@ LifecycleOwner 在 STARTED 和 RESUMED 的状态下可以根据 LiveData 更新 
 LiveData 和 LifecycleOwner 之间因为需要相互观察对方状态的变化，从而需要实现双向订阅；同时，为了支持良好的可扩展能力，各自都维护了一个观察者列表，形成一个多对多的双向订阅网络：
 
 ![Bidirection Subscribes](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/mvvm%E4%B9%8BLiveData%E7%AF%87/images/bidirection_subscribes.png "Bidirection subscribes")
+
+我们看到一个 LiveData 是可以同时向多个 LifecycleOwner 发起订阅的，所以，LiveData 本身其实并不实际维护一个激活状态，真正的激活状态维护在 LifecycleOwner 的 User-defined observer 中。
 
 <br>
 <br>
