@@ -286,7 +286,7 @@ public void observe(@NonNull LifecycleOwner owner, @NonNull Observer<? super T> 
 <br>
 <br>
 
-###<a name="ch5">5. 关于观察者模式的一点思考</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
+### <a name="ch5">5. 关于观察者模式的一点思考</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
 
 不难看出，LiveData 和 Lifecycle 的核心是观察者模式。无论是 LiveData 还是 Lifecycle，它们的共同点就是都需要维护一个稳定的状态机：
 
