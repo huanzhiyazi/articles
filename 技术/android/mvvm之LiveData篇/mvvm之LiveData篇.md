@@ -110,7 +110,7 @@ private void considerNotify(ObserverWrapper observer) {
 #### <a name="ch2.2">2.2 LifecycleOwner 订阅数据变化</a>
 
 LifecycleOwner 在 STARTED 和 RESUMED 的状态下可以根据 LiveData 更新 UI 的状态，所以 LifecycleOwner 需要订阅 LiveData 的数据变化。
-
+    
 在实际实现当中，LifecycleOwner 作为抽象层并不具体负责订阅 LiveData，而是由业务层在 LifecycleOwner 中完成具体的订阅工作，此时我们称 LifecycleOwner 为 Controller 更合适，虽然它们往往是同一个东西：
 
 ![LifecycleOwner observe LiveData](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/mvvm%E4%B9%8BLiveData%E7%AF%87/images/lifecycleowner_observe_livedata.png "LifecycleOwner observe LiveData")
