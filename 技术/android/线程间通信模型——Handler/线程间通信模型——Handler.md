@@ -1,11 +1,14 @@
 <a name="index">**目录**</a>
 
 - <a href="#ch1">**1 Handler 简介**</a>
+- <a href="#ch2">**2 简单的生产者-消费者模型**</a>
+- <a href="#ch3">**3 Handler 中的生产者-消费者模型**</a>
+- <a href="#ch4">**4 一些思考**</a>
 
 <br>
 <br>
 
-### <a href="ch1">1 Handler 简介</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
+### <a name="ch1">1 Handler 简介</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
 
 在 android 开发中，Handler 通常用于 UI 线程与工作线程之间的通信。由于 UI 线程的高实时性要求，我们必须将一些 IO 或者高计算量的任务分派给一个独立的工作线程去运行，这样在 UI 线程与工作线程之间就需要某种方式来进行通信，比如告知 UI 线程任务的完成情况。Handler 就是为此目的而实现。
 
@@ -16,11 +19,11 @@
 <br>
 <br>
 
-### <a href="ch2">2 简单的生产者-消费者模型</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
+### <a name="ch2">2 简单的生产者-消费者模型</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
 
 一个简单的生产者-消费者模型如下图所示：
 
-![Simple Producer-Consumer](images/simple_producer_consumer.png "Simple Producer-Consumer")
+![Simple Producer-Consumer](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/%E7%BA%BF%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1%E6%A8%A1%E5%9E%8B%E2%80%94%E2%80%94Handler/images/simple_producer_consumer.png "Simple Producer-Consumer")
 
 在该模型中，有 4 个主要的角色：
 
@@ -32,11 +35,11 @@
 <br>
 <br>
 
-### <a href="ch3">3 Handler 中的生产者-消费者模型</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
+### <a name="ch3">3 Handler 中的生产者-消费者模型</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
 
 Handler 继承了生产者-消费者模型的思想，如下图所示：
 
-![Handler Producer-Consumer](images/handler_producer_consumer.png "Handler Producer-Consumer")
+![Handler Producer-Consumer](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/%E7%BA%BF%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1%E6%A8%A1%E5%9E%8B%E2%80%94%E2%80%94Handler/images/handler_producer_consumer.png "Handler Producer-Consumer")
 
 其要点如下：
 
@@ -49,7 +52,7 @@ Handler 继承了生产者-消费者模型的思想，如下图所示：
 <br>
 <br>
 
-### <a href="ch4">4 一些思考</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
+### <a name="ch4">4 一些思考</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
 
 以上基本上就是 Handler 的实现思想。剩下还有两个点需要注意一下：
 
