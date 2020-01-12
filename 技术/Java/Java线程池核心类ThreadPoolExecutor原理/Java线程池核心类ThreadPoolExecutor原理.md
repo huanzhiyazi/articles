@@ -1,6 +1,9 @@
 <a name="index">**目录**</a>
 
 - <a href="#ch1">**1 Java 线程池家族**</a>
+- <a href="#ch2">**2 ThreadPoolExecutor 的线程池模型**</a>
+- <a href="#ch3">**3 线程池的关闭**</a>
+- <a href="#ch4">**4 关于ScheduledThreadPoolExecutor的一点说明**</a>
 
 <br>
 <br>
@@ -19,7 +22,7 @@ ForkJoinPool 用的不多，以后可能会去研究一下，这里主要说一�
 
 ThreadPoolExecutor 是一个基于生产者-消费者模型的结构，如下图所示：
 
-![Thread Pool Structure](images/thread_pool_structure.png "Thread Pool Structure")
+![Thread Pool Structure](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/Java/Java%E7%BA%BF%E7%A8%8B%E6%B1%A0%E6%A0%B8%E5%BF%83%E7%B1%BBThreadPoolExecutor%E5%8E%9F%E7%90%86/images/thread_pool_structure.png "Thread Pool Structure")
 
 我们具体说明一下：
 
