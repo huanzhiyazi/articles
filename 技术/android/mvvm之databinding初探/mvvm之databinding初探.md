@@ -4,6 +4,7 @@
     * <a href="#ch1.1">1.1 rebind 行为</a>
     * <a href="#ch1.2">1.2 observe data 行为</a>
     * <a href="#ch1.3">1.3 observe view 行为</a>
+- <a href="#ch2">**2 样例分析——谷歌 sunflower 的改造**</a>
 
 <br>
 <br>
@@ -30,7 +31,32 @@
 
 ![Data Binding rebind](images/databinding_rebind.png "Data Binding rebind")
 
-可以观察到，rebind 的过程就是一个简单的赋值操作，将 View 的值设置为 Data，只不过由 ViewDataBinding 这个代理来完成这个工作。图中的 ```_all``` 参数表示将 View 的所有需要更新的节点都设置为 Data 的所有对应的成员值。
+可以观察到，rebind 的过程就是一个简单的赋值操作，将 View 的值设置为 Data，只不过由 ViewDataBinding 这个代理来完成这个工作。图中的 ```_all``` 参数表示将 View 的所有需要更新的节点都设置为 Data 的所有对应的成员值。当我们在 layout 文件中进行如下设置时，ViewDataBinding 将代理完成 View 中所有数据绑定节点的 data rebind 操作：
+
+```xml
+<data>
+    <variable
+        name="demoData"
+        type="com.sample.DemoData" />
+</data>
+...
+
+<!-- 将 DemoData.element1 绑定到 ChildView1 -->
+<ChildView1
+    android:id="..."
+    android:width="..."
+    android:height="..."
+    app:element1="@{demoData.element1}"/>
+...
+
+<!-- 将 DemoData.element2 绑定到 ChildView2 -->
+<ChildView2
+    android:id="..."
+    android:width="..."
+    android:height="..."
+    android:text="@{demoData.element2}"/>
+...
+```
 
 #### <a name="ch1.2">1.2 observe data 行为</a>
 
@@ -79,10 +105,536 @@ public class DemoData extends BaseObservable {
 
 费尽心思进行这样的划分，是因为，单工View 只需要有 observe data 行为就可以了；而双工View 往往就需要 observe view 行为。具体来说，在反馈状态时需要更新 Data 的双工 View，我们需要进行 observe view 行为。
 
-因为双工View 会更新 Data，所以为了保证数据的一致性，Data 需要观察双工View 的状态变化。要做到这一点，这样的双工View 必须是一个可观察者对象。得益于 UI事件流的实现，双工View天然是可观察的，在自定义的双工View中，可以间接引用 ViewDataBinding，这样 ViewDataBinding 就可以代理 Data 订阅 View 的状态变化：
+因为双工View 会更新 Data，所以为了保证数据的一致性，Data 需要观察双工View 的状态变化。要做到这一点，这样的双工View 必须是一个可观察者对象。得益于 UI事件流的实现，双工View天然是可观察的（只要能反馈状态，就意味着能被观察）。在自定义的双工View中，可以间接引用 ViewDataBinding，这样 ViewDataBinding 就可以代理 Data 订阅 View 的状态变化：
 
 ![Data Binding observe view](images/databinding_observe_view.png "Data Binding observe view")
 
+图中我们可以看到，observe view 行为是伴随着 observe data 行为一起实现的。我们可以单独只实现 observe data 行为，但是如果要实现 observe view，必须同时实现 observe data 行为，因为该双工View 本身是也是要绑定 Data 的，也需要观察 Data 的变化——即 observe view 行为的实现需要通过双向绑定来达到，View 和 Data 同时都是对方的可观察者对象。
+
+Data Binding 的原理基本上都在这三种行为模式的图解上，为了更深入一些实现的细节，我们下面通过一个样例来分析一下。
+
+<br>
+<br>
+
+### <a name="ch2">2 样例分析——谷歌 sunflower 的改造</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
+
+sunflower app 是谷歌推出的 jetpack 库应用的最佳实践，官方只提供了 kotlin 的版本，如果大家更想看 java 版本，我改写了一个，文末放送。
+
+我们通过 sunflower 中的一个植物种植详情页面作为具体的案例分析。为了说明 observe view 行为，我对原来的实现做了一些修改，具体不表，大家直接看现有修改后的代码分析就可以了。另外，代码也不会全贴，只贴出少量关键代码便于大家抓住重点理解。
+
+#### <a name="ch2.1">2.1 Data——FakeData</a>
+
+我们定义了一个数据类——FakeData，其中有两个成员：
+
+- viewModel：植物的详细信息，用于 data observe 行为分析；
+- name: 一个测试字段，表示页面标题，用于 view observe 行为分析；
+
+其代码如下：
+
+```java
+public class FakeData extends BaseObservable {
+    private PlantDetailViewModel viewModel;
+    private String name;
+
+    public void setViewModel(PlantDetailViewModel viewModel) {
+        this.viewModel = viewModel;
+
+        // 同时通知 plant 和 isPlanted 的变化，因为这两个成员被保存在组合成员 viewModel 里
+        notifyPropertyChanged(BR.plant);
+        notifyPropertyChanged(BR.isPlanted);
+    }
+
+    @Bindable
+    public Plant getPlant() {
+        return viewModel != null ? viewModel.getPlant() : null;
+    }
+
+    @Bindable
+    public Boolean getIsPlanted() {
+        return viewModel != null ? viewModel.getIsPlanted() : false;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+
+        // 通知 ViewDataBinding，name 成员变化了
+        notifyPropertyChanged(BR.name);
+    }
+
+    @Bindable
+    public String getName() {
+        return name;
+    }
+}
+```
+
+这里，FakeData 暴露给外面的成员实际是三个：plant，isPlanted，name。其中 plant 和 isPlanted 由 viewModel 提供，所以当更新 viewModel 时，必须同时通知 ViewDataBinding 两个属性的更新。
+
+#### <a name="ch2.2">2.2 View——fragment_plant_detail.xml</a>
+
+植物详情页的布局文件便是我们的 View 定义，我们只关注它与 FakeData 绑定的部分，且只列出部分节点：
+
+```xml
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+        <!-- rebind -->
+        <variable
+            name="fakeData"
+            type="com.google.samples.apps.sunflower.data.FakeData" />
+
+        <!-- 其它Data声明 -->
+        ......
+    </data>
+
+    <androidx.coordinatorlayout.widget.CoordinatorLayout
+        ...>
+    ......
+
+            <!-- ① 绑定：observe data（赋值绑定） -->
+            <com.google.android.material.appbar.CollapsingToolbarLayout
+                android:id="@+id/toolbar_layout"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:fitsSystemWindows="true"
+                app:contentScrim="?attr/colorSurface"
+                app:statusBarScrim="?attr/colorSurface"
+                app:collapsedTitleGravity="center"
+                app:collapsedTitleTextAppearance="@style/TextAppearance.Sunflower.Toolbar.Text"
+                app:layout_scrollFlags="scroll|exitUntilCollapsed"
+                app:title="@{fakeData.name}"
+                app:titleEnabled="false"
+                app:toolbarId="@id/toolbar">
+
+                <!-- ② 绑定：observe data（adapter绑定） -->
+                <ImageView
+                    android:id="@+id/detail_image"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/plant_detail_app_bar_height"
+                    android:contentDescription="@string/plant_detail_image_content_description"
+                    android:fitsSystemWindows="true"
+                    android:scaleType="centerCrop"
+                    app:imageFromUrl="@{fakeData.plant.imageUrl}"
+                    app:layout_collapseMode="parallax" />
+
+                ......
+
+            </com.google.android.material.appbar.CollapsingToolbarLayout>
+
+        ......
+
+                <!-- ③ 绑定：observe data（adapter绑定） -->
+                <TextView
+                    android:id="@+id/plant_detail_name"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/margin_small"
+                    android:layout_marginEnd="@dimen/margin_small"
+                    android:gravity="center_horizontal"
+                    android:text="@{fakeData.plant.name}"
+                    android:textAppearance="?attr/textAppearanceHeadline5"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    tools:text="Apple" />
+
+                ......
+
+                <!-- ④ 绑定：observe view（双向adapter绑定） -->
+                <com.google.samples.apps.sunflower.views.FakeEditText
+                    android:id="@+id/plant_title_input"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/margin_small"
+                    android:layout_marginTop="@dimen/margin_small"
+                    android:layout_marginEnd="@dimen/margin_small"
+                    android:hint="type in title name"
+                    android:text="@={fakeData.name}"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/plant_description"/>
+
+            ......
+
+        ......
+
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>
+
+</layout>
+```
+
+在上面的代码中，我们标注了 4 个绑定节点，总共有三种类型的绑定方式：
+
+1. 赋值绑定：待绑定的 View 的属性带有 set 方法，这样可以直接将 Data 成员作为参数传递给 set 方法即可。
+
+2. adapter 绑定：如果待绑定的 View 的属性没有 set 方法，或者默认的 set 方法不足以处理数据设置中的复杂流程，我们需要单独定义一个带有 @BindingAdapter 标注的方法来更新该 View 节点。比如：要异步加载图片（绑定②）。注意到绑定③的情况，TextView 是有 setText() 方法的，为什么这里也是 adpter 绑定呢？稍后我们就会看到，官方对 TextView 提供了一套规范的 adapter 绑定方法集合，所以 TextView 自带的 set 方法就被这套 adapter 绑定方法集合替换了。我们以绑定②的 adapter 绑定方法定义为例：
+
+```java
+// 来自类：PlantDetailBindingAdapters.java
+
+@BindingAdapter("imageFromUrl")
+public static void bindImageFromUrl(ImageView view, String imageUrl) {
+    if (!TextUtils.isEmpty(imageUrl)) {
+        Glide.with(view.getContext())
+                .load(imageUrl)
+                .transition(DrawableTransitionOptions.withCrossFade())
+                .into(view);
+    }
+}
+```
+
+只要遇到 @BindingAdapter 标注，Data Binding 编译器在生成的 ViewDataBinding 中会将对应的 adapter 绑定方法和相关联的 View 的属性设置对应起来，稍后再说明 ViewDataBinding 的时候会有更详细的描述。
+
+3. 双向 adapter 绑定：这种绑定方式对应的是 observe view 行为模式。在这种模式下，adapter 绑定完成两个功能：绑定值；绑定对 View 的观察者。除此以外，还需要一个 inverse adapter 绑定，该绑定作为观察者读取新值的一个方法（还记得在 observe view 行为模式中介绍过的可以反馈新状态的双工View 吗？）。我们来看一下绑定④的双向 adapter 绑定方法定义：
+
+```java
+// 来自类：PlantDetailBindingAdapters.java
+
+@BindingAdapter(value = "android:text", requireAll = false)
+public static void setName(FakeEditText view, String name) {
+    if (!TextUtils.equals(view.getText(), name)) { // 避免无限循环绑定
+        view.setText(name);
+    }
+}
+
+// InverseBindingListener 是 FakeEditText 的一个观察者，其实现保存在 ViewDataBinding 
+// 中，所以这等价于 ViewDataBinding 在观察 FakeEditText 的状态反馈。
+// 注意：textAttrChanged 是这个观察者的 id
+@BindingAdapter(value = {"textAttrChanged"}, requireAll = false)
+public static void setTextAttrChanged(FakeEditText view, InverseBindingListener inverseBindingListener) {
+    view.setInverseBindingListener(inverseBindingListener);
+}
+
+// 用于上述 InverseBindingListener 调用，该方法将返回 FakeEditText 
+// 反馈的最新值，textAttrChanged 用于编译器识别是哪一个 InverseBindingListener
+@InverseBindingAdapter(attribute = "android:text", event = "textAttrChanged")
+public static String getName(FakeEditText view) {
+    final Editable editable = view.getText();
+    return editable != null ? editable.toString() : null;
+}
+```
+
+#### <a name="ch2.3">2.3 ViewDataBinding——FragmentPlantDetailBinding</a>
+
+我们先看一下 FragmentPlantDetailBinding 的部分定义：
+
+```java
+public abstract class FragmentPlantDetailBinding extends ViewDataBinding {
+  @NonNull
+  public final ImageView detailImage;
+
+  @NonNull
+  public final TextView plantDetailName;
+
+  @NonNull
+  public final FakeEditText plantTitleInput;
+
+  @NonNull
+  public final CollapsingToolbarLayout toolbarLayout;
+
+  // ... 省略其它 View 引用
+
+  @Bindable
+  protected FakeData mFakeData;
+
+  // ... 省略其它 Data 引用
+
+  protected FragmentPlantDetailBinding(Object _bindingComponent, View _root, int _localFieldCount,
+      ImageView detailImage, TextView plantDetailName, FakeEditText plantTitleInput, CollapsingToolbarLayout toolbarLayout, /* 其它 View 参数 */) {
+    super(_bindingComponent, _root, _localFieldCount);
+    this.detailImage = detailImage;
+    this.plantDetailName = plantDetailName;
+    this.plantTitleInput = plantTitleInput;
+    this.toolbarLayout = toolbarLayout;
+
+    // 其它 View 初始化
+  }
+
+  public abstract void setFakeData(@Nullable FakeData fakeData);
+
+  @Nullable
+  public FakeData getFakeData() {
+    return mFakeData;
+  }
+
+  // ... 省略其它方法定义
+}
+```
+
+粗一看 FragmentPlantDetailBinding 类的定义，只是一个暴露给业务层的接口，它的功能仅仅是读取每一个 View 节点（带来的好处便是不需要再通过繁琐的 findViewById() 来访问 View 了），以及读写 Data。这正是我们平时需要用到的 ViewDataBinding 的功能。
+
+要理解 ViewDataBinding 的运作原理，我们需要再探索一下 FragmentPlantDetailBinding 的最终实现类（FragmentPlantDetailBinding 只是一个抽象类，所以一定有一个子类来实现它）以及 FragmentPlantDetailBinding 的超类 ViewDataBinding。
+
+我们接下来看一下 FragmentPlantDetailBinding 的实现——FragmentPlantDetailBindingImpl 的定义：
+
+```java
+public class FragmentPlantDetailBindingImpl extends FragmentPlantDetailBinding {
+
+    @Nullable
+    private static final androidx.databinding.ViewDataBinding.IncludedLayouts sIncludes;
+    @Nullable
+    private static final android.util.SparseIntArray sViewsWithIds;
+    static {
+        sIncludes = null;
+        sViewsWithIds = new android.util.SparseIntArray();
+        sViewsWithIds.put(R.id.appbar, 8);
+        sViewsWithIds.put(R.id.toolbar, 9);
+        sViewsWithIds.put(R.id.plant_detail_scrollview, 10);
+        sViewsWithIds.put(R.id.plant_watering_header, 11);
+    }
+    // views
+    @NonNull
+    private final androidx.coordinatorlayout.widget.CoordinatorLayout mboundView0;
+    // variables
+    // values
+    // listeners
+    // Inverse Binding Event Handlers
+    private androidx.databinding.InverseBindingListener plantTitleInputtextAttrChanged = new androidx.databinding.InverseBindingListener() {
+        @Override
+        public void onChange() {
+            // Inverse of fakeData.name
+            //         is fakeData.setName((java.lang.String) callbackArg_0)
+            java.lang.String callbackArg_0 = com.google.samples.apps.sunflower.adapters.PlantDetailBindingAdapters.getName(plantTitleInput);
+            // localize variables for thread safety
+            // fakeData
+            com.google.samples.apps.sunflower.data.FakeData fakeData = mFakeData;
+            // fakeData != null
+            boolean fakeDataJavaLangObjectNull = false;
+            // fakeData.name
+            java.lang.String fakeDataName = null;
+
+            fakeDataJavaLangObjectNull = (fakeData) != (null);
+            if (fakeDataJavaLangObjectNull) {
+                fakeData.setName(((java.lang.String) (callbackArg_0)));
+            }
+        }
+    };
+
+    public FragmentPlantDetailBindingImpl(@Nullable androidx.databinding.DataBindingComponent bindingComponent, @NonNull View root) {
+        this(bindingComponent, root, mapBindings(bindingComponent, root, 12, sIncludes, sViewsWithIds));
+    }
+    private FragmentPlantDetailBindingImpl(androidx.databinding.DataBindingComponent bindingComponent, View root, Object[] bindings) {
+        super(bindingComponent, root, 1
+            , (android.widget.ImageView) bindings[2]
+            , (android.widget.TextView) bindings[3]
+            , (com.google.samples.apps.sunflower.views.FakeEditText) bindings[6]
+            , (com.google.android.material.appbar.CollapsingToolbarLayout) bindings[1]
+            , /* 其它保存在 bindings 中的 View 参数 */);
+        this.detailImage.setTag(null);
+        this.fab.setTag(null);
+        this.mboundView0 = (androidx.coordinatorlayout.widget.CoordinatorLayout) bindings[0];
+        this.mboundView0.setTag(null);
+        this.plantDetailName.setTag(null);
+        this.plantTitleInput.setTag(null);
+        this.toolbarLayout.setTag(null);
+        // 其它需要重置 tag 的字段
+
+        setRootTag(root);
+        // listeners
+
+        invalidateAll();
+    }
+
+    @Override
+    public void invalidateAll() {
+        synchronized(this) {
+                mDirtyFlags = 0x20L;
+        }
+        requestRebind();
+    }
+
+    @Override
+    public boolean hasPendingBindings() {
+        synchronized(this) {
+            if (mDirtyFlags != 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean setVariable(int variableId, @Nullable Object variable)  {
+        boolean variableSet = true;
+        if (BR.fakeData == variableId) {
+            setFakeData((com.google.samples.apps.sunflower.data.FakeData) variable);
+        }
+        else if (BR.callback == variableId) {
+            setCallback((com.google.samples.apps.sunflower.PlantDetailFragment.Callback) variable);
+        }
+        else {
+            variableSet = false;
+        }
+            return variableSet;
+    }
+
+    // rebind 行为模式
+    public void setFakeData(@Nullable com.google.samples.apps.sunflower.data.FakeData FakeData) {
+        // 将自己注册为 FakeData 的观察者，FakeData 成员发生更新后，其响应顺序为：
+        // handleFieldChange -> onFieldChange -> onChangeFakeData -> executeBindings
+        updateRegistration(0, FakeData);
+
+        // 整体更新 Data
+        this.mFakeData = FakeData;
+        synchronized(this) {
+            // 标记全部成员都要更新
+            mDirtyFlags |= 0x1L;
+        }
+
+        // FragmentPlantDetailBindingImpl 作为可观察者对象时需要发起通知
+        notifyPropertyChanged(BR.fakeData);
+
+        // 更新所有 FakeData 的成员到对应的 View 节点，实际调用 executeBindings() 方法
+        super.requestRebind();
+    }
+
+    @Override
+    protected boolean onFieldChange(int localFieldId, Object object, int fieldId) {
+        switch (localFieldId) {
+            case 0 :
+                return onChangeFakeData((com.google.samples.apps.sunflower.data.FakeData) object, fieldId);
+        }
+        return false;
+    }
+    // 通过唯一的二进制位来判断需要更新的字段
+    private boolean onChangeFakeData(com.google.samples.apps.sunflower.data.FakeData FakeData, int fieldId) {
+        if (fieldId == BR._all) {
+            synchronized(this) {
+                    mDirtyFlags |= 0x1L;
+            }
+            return true;
+        }
+        else if (fieldId == BR.name) {
+            synchronized(this) {
+                    mDirtyFlags |= 0x4L;
+            }
+            return true;
+        }
+        else if (fieldId == BR.plant) {
+            synchronized(this) {
+                    mDirtyFlags |= 0x8L;
+            }
+            return true;
+        }
+        else if (fieldId == BR.isPlanted) {
+            synchronized(this) {
+                    mDirtyFlags |= 0x10L;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    protected void executeBindings() {
+        long dirtyFlags = 0;
+        synchronized(this) {
+            dirtyFlags = mDirtyFlags;
+            mDirtyFlags = 0;
+        }
+        java.lang.String fakeDataPlantName = null;
+        java.lang.Boolean fakeDataIsPlanted = null;
+        com.google.samples.apps.sunflower.data.FakeData fakeData = mFakeData;
+        com.google.samples.apps.sunflower.data.Plant fakeDataPlant = null;
+        java.lang.String fakeDataName = null;
+        java.lang.String fakeDataPlantImageUrl = null;
+        // 其它 Data 字段声明
+
+        if ((dirtyFlags & 0x3dL) != 0) {
 
 
+            if ((dirtyFlags & 0x31L) != 0) {
+
+                    if (fakeData != null) {
+                        // read fakeData.isPlanted
+                        fakeDataIsPlanted = fakeData.getIsPlanted();
+                    }
+            }
+            if ((dirtyFlags & 0x29L) != 0) {
+
+                    if (fakeData != null) {
+                        // read fakeData.plant
+                        fakeDataPlant = fakeData.getPlant();
+                    }
+
+
+                    if (fakeDataPlant != null) {
+                        // read fakeData.plant.name
+                        fakeDataPlantName = fakeDataPlant.name;
+                        // read fakeData.plant.imageUrl
+                        fakeDataPlantImageUrl = fakeDataPlant.imageUrl;
+
+                        // 其它 Data 字段更新
+                    }
+            }
+            if ((dirtyFlags & 0x25L) != 0) {
+
+                    if (fakeData != null) {
+                        // read fakeData.name
+                        fakeDataName = fakeData.getName();
+                    }
+            }
+        }
+        // batch finished
+        if ((dirtyFlags & 0x29L) != 0) {
+            // api target 1
+
+            com.google.samples.apps.sunflower.adapters.PlantDetailBindingAdapters.bindImageFromUrl(this.detailImage, fakeDataPlantImageUrl);
+            androidx.databinding.adapters.TextViewBindingAdapter.setText(this.plantDetailName, fakeDataPlantName);
+            // 其它 View 节点更新
+        }
+        if ((dirtyFlags & 0x20L) != 0) {
+            // api target 1
+
+            com.google.samples.apps.sunflower.adapters.PlantDetailBindingAdapters.setTextAttrChanged(this.plantTitleInput, plantTitleInputtextAttrChanged);
+        }
+        if ((dirtyFlags & 0x31L) != 0) {
+            // api target 1
+
+            com.google.samples.apps.sunflower.adapters.PlantDetailBindingAdapters.bindIsGone(this.fab, fakeDataIsPlanted);
+        }
+        if ((dirtyFlags & 0x25L) != 0) {
+            // api target 1
+
+            com.google.samples.apps.sunflower.adapters.PlantDetailBindingAdapters.setName(this.plantTitleInput, fakeDataName);
+            this.toolbarLayout.setTitle(fakeDataName);
+        }
+    }
+    // dirty flag
+    private  long mDirtyFlags = 0xffffffffffffffffL;
+
+    // 省略其它 Data 相关
+}
+```
+
+结合上一节我们谈到的 Data Binding 的三种行为模式，我们分部进行探讨：
+
+1. **rebind 行为模式**：
+
+rebind 行为的逻辑体现在 setFakeData() 的实现里，该方法有以下几个功能：
+
+* **将自己注册为 FakeData 的一个观察者**。
+ 
+当 FakeData 调用 notifyPropertyChanged() 来通知某些成员发生更新时，FragmentPlantDetailBindingImpl 将收到对应的通知。该功能由 updateRegistration() 方法完成，实现细节在超类 ViewDataBinding 中，我们不关心该细节如何，只需要知道基本的原理就是：FakeData 是一个可观察者对象，FragmentPlantDetailBindingImpl 是一个观察者对象，FakeData 将 FragmentPlantDetailBindingImpl 或者 FragmentPlantDetailBindingImpl 的一个引用保存到自己的观察者列表中。当 FakeData 的成员更新时，ViewDataBinding 将响应此更新：
+
+```java
+// ViewDataBinding.java
+
+private void handleFieldChange(int mLocalFieldId, Object object, int fieldId) {
+    // ...省略非关键代码
+
+    boolean result = onFieldChange(mLocalFieldId, object, fieldId);
+    if (result) {
+        requestRebind();
+    }
+}
+```
+
+在 handleFieldChange() 中，首先通过 onFieldChange() 方法来判断是否有字段要更新，如果有则调用 requestRebind() 来完成更新。onFieldChange() 是一个抽象方法，其实现代码由 Data Binding 编译器填充到 FragmentPlantDetailBindingImpl 的 onFieldChange() 方法中。
+
+在 Data Binding 编译阶段，对所有的 FakeData 成员都进行了编号，每一个成员都唯一对应一个二进制数字的一个位，如果某个成员发生了修改，其对应的二进制位将被记录，记录的位置保存在变量 mDirtyFlags 中。这样就做到了只需要更新实际需要更新的字段，避免重复更新和渲染。
+
+* **整体更新 FakeData，标记 mDirtyFlags 为全部成员都需要更新**。
 
