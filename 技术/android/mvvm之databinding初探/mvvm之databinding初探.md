@@ -5,6 +5,11 @@
     * <a href="#ch1.2">1.2 observe data 行为</a>
     * <a href="#ch1.3">1.3 observe view 行为</a>
 - <a href="#ch2">**2 样例分析——谷歌 sunflower 的改造**</a>
+    * <a href="#ch2.1">2.1 Data——FakeData</a>
+    * <a href="#ch2.2">2.2 View——fragment_plant_detail.xml</a>
+    * <a href="#ch2.3">2.3 ViewDataBinding——FragmentPlantDetailBinding</a>
+    * <a href="#ch2.4">2.4 adapter 绑定说明</a>
+- <a href="#ch3">**3 免 findViewById 的实现**</a>
 
 <br>
 <br>
@@ -287,7 +292,7 @@ public static void bindImageFromUrl(ImageView view, String imageUrl) {
 
 只要遇到 @BindingAdapter 标注，Data Binding 编译器在生成的 ViewDataBinding 中会将对应的 adapter 绑定方法和相关联的 View 的属性设置对应起来，稍后再说明 ViewDataBinding 的时候会有更详细的描述。
 
-3. 双向 adapter 绑定：这种绑定方式对应的是 observe view 行为模式。在这种模式下，adapter 绑定完成两个功能：绑定值；绑定对 View 的观察者。除此以外，还需要一个 inverse adapter 绑定，该绑定作为观察者读取新值的一个方法（还记得在 observe view 行为模式中介绍过的可以反馈新状态的双工View 吗？）。我们来看一下绑定④的双向 adapter 绑定方法定义：
+3. 双向 adapter 绑定：这种绑定方式对应的是 observe view 行为模式。在这种模式下，adapter 绑定完成两个功能：绑定值；绑定对 View 的观察者。除此以外，还需要一个 inverse adapter 绑定，该绑定作为观察者读取新值的一个方法（还记得在 observe view 行为模式中介绍过的可以反馈新状态的双工View 吗？在这里，FakeEditText 就是一个双工View）。我们来看一下绑定④的双向 adapter 绑定方法定义：
 
 ```java
 // 来自类：PlantDetailBindingAdapters.java
@@ -391,6 +396,7 @@ public class FragmentPlantDetailBindingImpl extends FragmentPlantDetailBinding {
     // values
     // listeners
     // Inverse Binding Event Handlers
+    // 作为 ViewDataBinding 观察 FakeEditText 输入变化的观察者
     private androidx.databinding.InverseBindingListener plantTitleInputtextAttrChanged = new androidx.databinding.InverseBindingListener() {
         @Override
         public void onChange() {
@@ -440,6 +446,7 @@ public class FragmentPlantDetailBindingImpl extends FragmentPlantDetailBinding {
     @Override
     public void invalidateAll() {
         synchronized(this) {
+                // 需要观察 FakeEditText
                 mDirtyFlags = 0x20L;
         }
         requestRebind();
@@ -588,6 +595,7 @@ public class FragmentPlantDetailBindingImpl extends FragmentPlantDetailBinding {
         if ((dirtyFlags & 0x20L) != 0) {
             // api target 1
 
+            // 完成对 FakeEditText 的观察行为
             com.google.samples.apps.sunflower.adapters.PlantDetailBindingAdapters.setTextAttrChanged(this.plantTitleInput, plantTitleInputtextAttrChanged);
         }
         if ((dirtyFlags & 0x31L) != 0) {
@@ -615,13 +623,60 @@ public class FragmentPlantDetailBindingImpl extends FragmentPlantDetailBinding {
 
 rebind 行为的逻辑体现在 setFakeData() 的实现里，该方法有以下几个功能：
 
-* **将自己注册为 FakeData 的一个观察者**。
+* **将自己注册为 FakeData 的一个观察者，为 observe data 做准备**。
  
-当 FakeData 调用 notifyPropertyChanged() 来通知某些成员发生更新时，FragmentPlantDetailBindingImpl 将收到对应的通知。该功能由 updateRegistration() 方法完成，实现细节在超类 ViewDataBinding 中，我们不关心该细节如何，只需要知道基本的原理就是：FakeData 是一个可观察者对象，FragmentPlantDetailBindingImpl 是一个观察者对象，FakeData 将 FragmentPlantDetailBindingImpl 或者 FragmentPlantDetailBindingImpl 的一个引用保存到自己的观察者列表中。当 FakeData 的成员更新时，ViewDataBinding 将响应此更新：
+该功能由 updateRegistration() 方法完成，实现细节在超类 ViewDataBinding 中，我们不关心该细节如何，只需要知道基本的原理就是：FakeData 是一个可观察者对象，FragmentPlantDetailBindingImpl 是一个观察者对象，FakeData 将 FragmentPlantDetailBindingImpl 或者 FragmentPlantDetailBindingImpl 的一个引用保存到自己的观察者列表中，这个观察者列表在 FakeData 的父类 BaseObservable 中：
+
+```java
+public class BaseObservable implements Observable {
+    // 观察者列表
+    private transient PropertyChangeRegistry mCallbacks;
+
+    public BaseObservable() {
+    }
+
+    // 当 ViewDataBinding 调用 updateRegistration() 时，触发该方法执行注册行为 
+    @Override
+    public void addOnPropertyChangedCallback(@NonNull OnPropertyChangedCallback callback) {
+        synchronized (this) {
+            if (mCallbacks == null) {
+                mCallbacks = new PropertyChangeRegistry();
+            }
+        }
+        mCallbacks.add(callback);
+    }
+
+    @Override
+    public void removeOnPropertyChangedCallback(@NonNull OnPropertyChangedCallback callback) {
+        synchronized (this) {
+            if (mCallbacks == null) {
+                return;
+            }
+        }
+        mCallbacks.remove(callback);
+    }
+
+    // 遍历观察者列表，通知所有观察者，有 data 成员发生变化
+    public void notifyPropertyChanged(int fieldId) {
+        synchronized (this) {
+            if (mCallbacks == null) {
+                return;
+            }
+        }
+        mCallbacks.notifyCallbacks(this, fieldId, null);
+    }
+
+    // ...省略其它方法
+}
+
+```
+
+当 FakeData（即 BaseObservable） 调用 notifyPropertyChanged() 来通知某些成员发生更新时，FragmentPlantDetailBindingImpl（即 ViewDataBinding） 将收到对应的通知：
 
 ```java
 // ViewDataBinding.java
 
+// 响应通知
 private void handleFieldChange(int mLocalFieldId, Object object, int fieldId) {
     // ...省略非关键代码
 
@@ -637,4 +692,99 @@ private void handleFieldChange(int mLocalFieldId, Object object, int fieldId) {
 在 Data Binding 编译阶段，对所有的 FakeData 成员都进行了编号，每一个成员都唯一对应一个二进制数字的一个位，如果某个成员发生了修改，其对应的二进制位将被记录，记录的位置保存在变量 mDirtyFlags 中。这样就做到了只需要更新实际需要更新的字段，避免重复更新和渲染。
 
 * **整体更新 FakeData，标记 mDirtyFlags 为全部成员都需要更新**。
+
+若 FakeData 有多个绑定成员，那么每个成员都共享一位标记位，只要这个共享位是置位的，那么所有的绑定成员都会更新到对应 View 节点。
+
+* **通知自身的观察者，FakeData发生了变化**。
+
+ViewDataBinding 本身也是一个 BaseObservable，所以它也可以成为其它观察者观察的目标。**这里我还没有找到相关的应用场景，留待后续跟进**。
+
+* **发送 rebind 命令，执行整体更新 FakeData 操作**。
+
+ViewDataBinding.requestRebind() 最终调用抽象方法 executeBindings()，由 FragmentPlantDetailBindingImpl.executeBindings() 实现 Data 到 View 的更新。
+
+2. **observe data 行为模式**：
+
+在上文中我们已经知道，rebind 行为如何通过将 ViewDataBinding 注册为 FakeData 的观察者来实现 observe data 行为的。
+
+当 FakeData 通过 notifyPropertyChanged(/\*属性ID\*/) 来通知 ViewDataBinding 其某个成员发生变化时，FragmentPlantDetailBindingImpl 最终要做的工作就是更新 mDirtyFlags，将该成员对应的标记位置位，并通过 executeBindings() 执行 Data 成员到对应 View 的更新操作（**注意：executeBindings() 只会更新 mDirtyFlags 中置位对应的成员**）。
+
+3. **observe view 行为模式**：
+
+我们首先看一下在 2.2 节中提到的双工View——FakeEditText 的定义：
+
+```java
+public class FakeEditText extends AppCompatEditText {
+    private InverseBindingListener inverseBindingListener;
+    // 供双向 adapter 绑定调用
+    public void setInverseBindingListener(InverseBindingListener listener) {
+        this.inverseBindingListener = listener;
+    }
+    
+    // ...省略
+
+    public FakeEditText(Context context, AttributeSet attrs, int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
+        init();
+    }
+
+    private void init() {
+        this.addTextChangedListener(new TextWatcher() {
+            // ...省略
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                if (inverseBindingListener != null) {
+                    inverseBindingListener.onChange();
+                }
+            }
+        });
+    }
+}
+
+```
+
+在 observe view 行为中，双工View 是一个可观察者，而 Data 和 ViewDataBinding 是观察者。我们看到在 FakeEditText 中，有一个 InverseBindingListener 对象，它响应 FakeEditText 中用户输入的变化。这个 InverseBindingListener 对象是 ViewDataBinding 的一个间接引用，它对 FakeEditText 的输入响应就相当于 ViewDataBinding 对 FakeEditText 的输入响应。换句话说，InverseBindingListener 的存在实现了 ViewDataBinding 观察 FakeEditText 的目的。
+
+而我们看到，InverseBindingListener 的实际对象被 data binding 编译器编译进了 ViewDataBinding 的实现 FragmentPlantDetailBindingImpl 中——plantTitleInputtextAttrChanged。FakeEditText 中的 InverseBindingListener 对象如何被设置为 plantTitleInputtextAttrChanged 的呢？这就需要我们回忆一下在 2.2 节中的双向 adapter 绑定，在其中的 setTextAttrChanged() 方法中，我们已经做好了这种设置。现在只需要知道 setTextAttrChanged() 是何时被调用的。
+
+很简单，在 FragmentPlantDetailBindingImpl 的构造方法中，最后会通过 invalidateAll() 对 mDirtyFlags 进行置位标记。在双向 adapter 绑定中，对 View 的观察行为也被当做一个置位标记，置位后再通过发送 rebind 命令，就可以在 executeBindings() 中调用 setTextAttrChanged()。
+
+在 plantTitleInputtextAttrChanged 的 onChange() 方法中，我们注意两个有趣的方法：
+
+- com.google.samples.apps.sunflower.adapters.PlantDetailBindingAdapters.getName()
+- fakeData.setName()：该方法将通过 observe data 行为最终调用 com.google.samples.apps.sunflower.adapters.PlantDetailBindingAdapters.setName()
+
+第一个方法的目的是读取 FakeEditText 反馈的最新值，第二方法的目的是将最新值更新到 FakeData 中，这就是我们需要在双向 adapter 绑定中必须定义三个方法的原因。
+
+通过这一系列操作，最终实现了 observe view 行为。
+
+#### <a name="ch2.4">2.4 adapter 绑定说明</a>
+
+在 executeBindings() 方法中，我们看到，View 对 Data 变化的更新操作，很多都是通过 adapter 绑定方法来实现的。在 @BindingAdapter 标注中，要指定该方法对应的 Data 成员名称，这样 Data Binding 编译器就知道，当哪个 Data 成员被置位时，应该调用哪个 adapter 绑定方法完成更新，从而把该方法填充到 executeBindings() 方法中的正确位置。
+
+我们注意到 androidx.databinding.adapters.TextViewBindingAdapter 这个类，这是官方专门针对 TextView 及其子类提供的一整套规范的 adapter 方法集合，在 observe data 行为中，凡是针对的 View 为 TextView 或其子类，其 View 更新方法都将替换为 TextViewBindingAdapter 中的 adapter 方法。除了 TextViewBindingAdapter 以外，官方还提供了很多其它 View 的通用 adapter 方法，这些方法都是默认的。我们也可以通过自定义的 adapter 方法来替换官方的方法，而这是由编译器来判定的。
+
+<br>
+<br>
+
+### <a name="ch3">3 免 findViewById 的实现</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
+
+我们在 2.3 节中提到，在暴露给业务层的 ViewDataBinding 类——FragmentPlantDetailBinding 中，保存了 layout 文件中的 View 节点引用，但并不是所有的节点都会引用，准确来说，其保存的 View 节点有两类：
+
+1. 与 Data 有绑定关系的节点，Data Binding 编译器在编译过程中会在 layout 文件中将这样的节点添加一个以 "binding_" 开头的 tag；
+2. 设置了 id 的节点，这样的节点因为程序员后面需要访问到，所以必须引用进来。
+
+假如在 layout 文件中有 include 标签，并且也绑定了 Data，那么还会引用一个该 include 包含的 layout 文件对应的 ViewDataBinding 对象。
+
+ViewDataBinding 实现免 findViewById 的方法可以用以下的一个流程图简单概括：
+
+![Data Binding findViewById free](images/databinding_findviewbyid_free.png "Data Binding findViewById free")
+
+如图所示，总的流程分为两大部分：
+
+- 预处理：由 Data Binding 编译器对 layout 文件进行一些必要的 patch 操作，主要是进行 tag 处理，以及生成必要的映射表和 ViewDataBinding 类；
+- 实例化：在运行时，通过 DataBindingUtil.inflate() 方法实例化具体的 ViewDataBinding 对象，主要的作用在于映射准确的 ViewDataBinding，深度遍历根 View 并保存必须的子节点视图。
+
+
 
