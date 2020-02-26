@@ -34,7 +34,7 @@
 
 首先，Data 往往是一个数据的集合，数据绑定的第一步就是要将整个 Data 集合绑定到 View，比如初始化和数据的整体更新，如下图所示：
 
-![Data Binding rebind](images/databinding_rebind.png "Data Binding rebind")
+![Data Binding rebind](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/mvvm%E4%B9%8Bdatabinding%E5%88%9D%E6%8E%A2/images/databinding_rebind.png "Data Binding rebind")
 
 可以观察到，rebind 的过程就是一个简单的赋值操作，将 View 的值设置为 Data，只不过由 ViewDataBinding 这个代理来完成这个工作。图中的 ```_all``` 参数表示将 View 的所有需要更新的节点都设置为 Data 的所有对应的成员值。当我们在 layout 文件中进行如下设置时，ViewDataBinding 将代理完成 View 中所有数据绑定节点的 data rebind 操作：
 
@@ -67,7 +67,7 @@
 
 有时候，我们并不需要每次更新整个 Data 集合，而只需要更新集合中的某一个成员。我们希望看到的结果是，当 Data.element_i 发生变化的时候，View.child_i 更新就可以了，而不需要将 View 的所有视图节点都重新渲染一遍。要做到这一点，我们必须要让 View 可以观察 Data 的行为。换句话说，Data 是一个可观察者对象——这是 Data Binding 中另一个魅力所在，其行为模式如下：
 
-![Data Binding observe data](images/databinding_observe_data.png "Data Binding observer data")
+![Data Binding observe data](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/mvvm%E4%B9%8Bdatabinding%E5%88%9D%E6%8E%A2/images/databinding_observe_data.png "Data Binding observer data")
 
 我们可以将任何数据作为一个 Observable，然后将 ViewDataBinding 作为 View 的代理观察者，订阅 Data 的成员变化，一旦 Data 成员变化，便通知所有观察者对象——即 ViewDataBinding，然后 ViewDataBinding 再将 View 的相应节点的值设置为 Data 相应成员的新值——即图中的 ```_member``` 参数。
 
@@ -112,7 +112,7 @@ public class DemoData extends BaseObservable {
 
 因为双工View 会更新 Data，所以为了保证数据的一致性，Data 需要观察双工View 的状态变化。要做到这一点，这样的双工View 必须是一个可观察者对象。得益于 UI事件流的实现，双工View天然是可观察的（只要能反馈状态，就意味着能被观察）。在自定义的双工View中，可以间接引用 ViewDataBinding，这样 ViewDataBinding 就可以代理 Data 订阅 View 的状态变化：
 
-![Data Binding observe view](images/databinding_observe_view.png "Data Binding observe view")
+![Data Binding observe view](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/mvvm%E4%B9%8Bdatabinding%E5%88%9D%E6%8E%A2/images/databinding_observe_view.png "Data Binding observe view")
 
 图中我们可以看到，observe view 行为是伴随着 observe data 行为一起实现的。我们可以单独只实现 observe data 行为，但是如果要实现 observe view，必须同时实现 observe data 行为，因为该双工View 本身是也是要绑定 Data 的，也需要观察 Data 的变化——即 observe view 行为的实现需要通过双向绑定来达到，View 和 Data 同时都是对方的可观察者对象。
 
@@ -779,7 +779,7 @@ public class FakeEditText extends AppCompatEditText {
 
 ViewDataBinding 实现免 findViewById 的方法可以用以下的一个流程图简单概括：
 
-![Data Binding findViewById free](images/databinding_findviewbyid_free.png "Data Binding findViewById free")
+![Data Binding findViewById free](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/mvvm%E4%B9%8Bdatabinding%E5%88%9D%E6%8E%A2/images/databinding_findviewbyid_free.png "Data Binding findViewById free")
 
 如图所示，总的流程分为两大部分：
 
@@ -787,4 +787,12 @@ ViewDataBinding 实现免 findViewById 的方法可以用以下的一个流程�
 - 实例化：在运行时，通过 DataBindingUtil.inflate() 方法实例化具体的 ViewDataBinding 对象，主要的作用在于映射准确的 ViewDataBinding，深度遍历根 View 并保存必须的子节点视图。
 
 
+<br>
+<br>
+<br>
 
+> 说明：
+> 
+> 该文档参考的 androidx 版本为 
+> 
+> core: 1.1.0

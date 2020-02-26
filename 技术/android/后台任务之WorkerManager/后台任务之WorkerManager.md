@@ -16,7 +16,7 @@
 
 我们知道不运行在主线程中的任务叫做后台任务。在实际应用中，根据不同的应用场景有两类后台任务是我们常遇到的，如下图所示：
 
-![Why use WorkerManager](images/why_use_workermanager.png "Why use WorkerManager")
+![Why use WorkerManager](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/%E5%90%8E%E5%8F%B0%E4%BB%BB%E5%8A%A1%E4%B9%8BWorkerManager/images/why_use_workermanager.png "Why use WorkerManager")
 
 我们通常在应用内部会向服务器请求数据、加载图片并显示等等，这种任务的特点是需要在发起请求后马上执行，但是允许有一定的执行丢失；还有一部分任务，在构建后不需要马上执行，而是可以适当推迟到合适的时机再执行，比如在手机可用资源（电量、存储、网络等）充足时，但是必须要保证最终一定能够执行，即便APP已经退出了，比如向服务器发送日志这样的工作。
 
@@ -31,7 +31,7 @@ WorkerManager 就是专门用来处理后一种后台任务的。这很像时间
 
 为了分析 WorkerManager 的运行原理，我们先看一下它的结构图：
 
-![WorkerManager Structure](images/workermanager_structure.png "WorkerManager Structure")
+![WorkerManager Structure](https://github.com/huanzhiyazi/articles/blob/master/%E6%8A%80%E6%9C%AF/android/%E5%90%8E%E5%8F%B0%E4%BB%BB%E5%8A%A1%E4%B9%8BWorkerManager/images/workermanager_structure.png?raw=true "WorkerManager Structure")
 
 从上面的结构图中我们可以看到，WorkerManager 的运行机理遵循分层的结构设计。要点如下：
 
@@ -132,23 +132,23 @@ private @NonNull Executor createDefaultExecutor() {
 
 WorkerManager 的任务链（**非周期任务**）是一种满足如下条件的有向无环图：**处于同一层的节点有相同的父节点和相同的儿子节点**。如下图，左边的黑色有向图是一个合法的任务链，处于同一层的任务 b 和 c 有相同的父节点 a 和相同的儿子节点 d；而右边的灰色有向图是一个非法的任务链，同层的任务 b 和 c 虽然有相同的父节点，但是不共享相同的儿子节点。
 
-![Right and Wrong Workers](images/right_and_wrong_workers.png "Right and Wrong Workers")
+![Right and Wrong Workers](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/%E5%90%8E%E5%8F%B0%E4%BB%BB%E5%8A%A1%E4%B9%8BWorkerManager/images/right_and_wrong_workers.png "Right and Wrong Workers")
 
 注意到，同一层的任务因为没有依赖关系，所以是可以并发执行的。在抽象层次上，我们可以把同层任务合并为一个任务，这样这个有向无环图就变成了一个单链，再进一步，多条单链又可以合并为一个任务，并可以继续往后延伸。所以，抽象来看，一个有向无环的任务依赖图最终可以规约为一条单链，这就是我将其命名为任务链的原因。
 
 所以，实际的任务链形如下图所示：
 
-![Supported topological run Workers](images/supported_topological_run_workers.png "Supported topological run Workers")
+![Supported topological run Workers](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/%E5%90%8E%E5%8F%B0%E4%BB%BB%E5%8A%A1%E4%B9%8BWorkerManager/images/supported_topological_run_workers.png "Supported topological run Workers")
 
 图中在矩形框中的竖排圆圈表示同层可并发执行的任务。注意到，执行 combine 操作后，多条链会合并成一个合并任务节点（图中的虚线圆圈），这并非仅仅是图中为了说明而画出，而是在 WorkerManager 中就是这么实现的，这个合并节点是一个无任何约束条件的任务，它的作用仅仅只是将前序链的输出结果进行合并，以备作为后续节点的输入。
 
-#### <a name="ch4.1">4.2 任务链的执行顺序——拓扑排序</a>
+#### <a name="ch4.2">4.2 任务链的执行顺序——拓扑排序</a>
 
 既然任务链是一个有向无环图，那么其执行顺序必然满足拓扑排序，即假设在图 G 中的一个有向边为 u→v，那么在拓扑序列中，必然有 u 排在 v 的前面。
 
 以下图为例：
 
-![Topological run Workers](images/topological_run_workers.png "Topological run Workers")
+![Topological run Workers](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/%E5%90%8E%E5%8F%B0%E4%BB%BB%E5%8A%A1%E4%B9%8BWorkerManager/images/topological_run_workers.png "Topological run Workers")
 
 满足该任务链的执行顺序可以是：a,b,c,e,d,f 或 a,d,b,c,e,f 或 a,c,d,b,e,f 等。它们都是该有向图的拓扑排序。该任务链的构造实现如下：
 
@@ -171,7 +171,7 @@ WorkContinuation.combine(Arrays.asList(wc1, wc2)).enqueue();
 
 WorkerManager 的任务数据传递过程如下图所示：
 
-![Worker data transfer](images/worker_data_transfer.png "Worker data transfer")
+![Worker data transfer](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/%E5%90%8E%E5%8F%B0%E4%BB%BB%E5%8A%A1%E4%B9%8BWorkerManager/images/worker_data_transfer.png "Worker data transfer")
 
 注意，由于任务 a, b, c 都是任务 d 和 e 的父亲节点，所以 d 和 e 的输入数据是一模一样的，都来自合并的 a, b, c 的输出数据。
 
