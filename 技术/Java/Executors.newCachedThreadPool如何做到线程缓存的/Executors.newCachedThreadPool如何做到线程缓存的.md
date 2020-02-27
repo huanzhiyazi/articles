@@ -153,7 +153,7 @@ private Runnable getTask() {
 
 以下是 CachedThreadPool 运行机制的结构图，可以大概描述其运行流程：
 
-![CachedThreadPool structure](images/cached_thread_pool_structure.png "CachedThreadPool structure")
+![CachedThreadPool structure](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/Java/Executors.newCachedThreadPool%E5%A6%82%E4%BD%95%E5%81%9A%E5%88%B0%E7%BA%BF%E7%A8%8B%E7%BC%93%E5%AD%98%E7%9A%84/images/cached_thread_pool_structure.png "CachedThreadPool structure")
 
 这里需要注意的是，如果客户端一次提交的任务太多，则工作池中没有足够的闲置线程来从任务队列中 poll 缓存任务，也就是说，客户端提交的任务里只有一部分可以在任务队列中插入成功，剩下的任务全部直接进入工作池中，并生成新的线程来执行。
 
