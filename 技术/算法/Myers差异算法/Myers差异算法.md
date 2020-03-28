@@ -6,6 +6,7 @@
     * <a href="#ch2.2">2.2 公共轨迹 snake 和轨迹偏移 k</a>
     * <a href="#ch2.3">2.3 两条引理</a>
     * <a href="#ch2.4">2.4 具体实现</a>
+- <a href="#ch3">**3 基于分治策略的改进——线性空间复杂度**</a>
 
 <br>
 <br>
@@ -128,11 +129,82 @@ For D ← 0 to M+N Do
 
 现在来说明代码第 4 到第 8 行，这一段代码用来确定 `V[k]` 即 `x` 的值。也可以说根据末端 k 确定当前子问题的末端 snake 的起始坐标。具体来说：
 
-- 如果 k == -D，那么前一个子问题 (D-1)-path 的末端 k 可能为 k+1 == -D+1 或者 k-1 == -D-1，而根据引理 1，(D-1)-path 的 k ∈ { -(D-1), -(D-1)+2, ..., (D-1) }，所以 (D-1)-path 的 k 值不可能为 -D-1，即当前问题只能由 (D-1)-path 从末端轨迹偏移 k+1 插入字符后进行转换。所以，当前问题的 x 坐标与子问题 (D-1)-path 的 x 坐标相等，而子问题 (D-1)-path 的 x 坐标保存在 `V[k+1]` 中。
+- **如果 k == -D**，那么前一个子问题 (D-1)-path 的末端 k 可能为 k+1 == -D+1 或者 k-1 == -D-1，而根据引理 1，(D-1)-path 的末端 k ∈ { -(D-1), -(D-1)+2, ..., (D-1) }，所以 (D-1)-path 的末端 k 不可能为 -D-1，即当前问题只能由 (D-1)-path 从末端轨迹偏移 k+1 **插入** 字符后进行转换。所以，当前问题的 x 坐标与子问题 (D-1)-path 的 x 坐标相等，而子问题 (D-1)-path 的 x 坐标保存在 `V[k+1]` 中，所以当前问题的 x 坐标值为：`x = V[k+1]`。
+
+- **如果 k == D**，那么前一个子问题 (D-1)-path 的末端 k 可能为 k+1 == D+1 或者 k-1 == D-1，而根据引理 1，(D-1)-path 的末端 k ∈ { -(D-1), -(D-1)+2, ..., (D-1) }，所以 (D-1)-path 的末端 k 不可能为 D+1，即当前问题只能由 (D-1)-path 从末端轨迹偏移 k-1 **删除** 字符后进行转换。所以，当前问题的 x 坐标是子问题 (D-1)-path 的 x 坐标向右移一步，而子问题 (D-1)-path 的 x 坐标保存在 `V[k-1]` 中，所以当前问题的 x 坐标值为：`x = V[k-1] + 1`。
+
+- **剩下的中间状态 k ∈ (-D, D)**，既可能是末端轨迹偏移为 k-1 的子问题 (D-1)-(k-1)-path 往右走一步删除字符得到，也可能是末端轨迹偏移为 k+1 的子问题 (D-1)-(k+1)-path 往下走一步插入字符得到。算法通过比较两个子问题的 x 坐标值大小（子问题 (D-1)-(k-1)-path 的 x 坐标为 `V[k-1]`；子问题 (D-1)-(k+1)-path 的 x 坐标为 `V[k+1]`）来判断选取哪个子问题作为当前问题的前一个子问题：
+
+    * 若 `V[k+1] > V[k-1] => V[k+1] >= V[k-1] + 1`：若选取子问题 (D-1)-(k-1)-path，则当前问题的末端 snake 起始坐标为 `midPoint1 = (V[k-1] + 1, V[k-1] - k + 1)`；若选取子问题 (D-1)-(k+1)-path，则当前问题的末端 snake 起始坐标为 `midPoint2 = (V[k+1], V[k+1] - k)`。显然有 `midPoint2.x >= midPoint1.x && midPoint2.y >= midPoint1.y`，所以子问题 (D-1)-(k+1)-path 走的更远，选取 (D-1)-(k+1)-path 作为前一个子问题，而当前问题的 x 坐标值为：`x = V[k+1]`。
+    * 若 `V[k+1] <= V[k-1] => V[k+1] < V[k-1] + 1`，同理可以证明子问题 (D-1)-(k-1)-path 走的更远，选取 (D-1)-(k-1)-path 作为前一个子问题，而当前问题的 x 坐标值为：`x = V[k-1] + 1`。
+
+从 (D-1)-path 到 D-path 的 path 路径图如下所示：
+
+![(D-1)-path to D-path with insert](images/d-1-path-to-d-path-insert.png "(D-1)-path to D-path with insert")
+
+<br>
+
+![(D-1)-path to D-path with delete](images/d-1-path-to-d-path-delete.png "(D-1)-path to D-path with delete")
+
+<br>
+
+这样，通过执行代码第 4 到第 8 行，就确定了当前子问题的末端 snake 的起始坐标为 `(V[k-1] + 1, V[k-1] - k + 1)` 或 `(V[k+1], V[k+1] - k)`。
+
+而代码第 9~10 行将沿着末端 snake 尽可能地延伸，最终确定末端 snake 的终点坐标为 `endPoint = (V[k], V[k] - k)`。可以看到在求解每个子问题的时候，数组 V 中存储的前序子问题的末端 snake 都达到了它最远能达到的距离，这就是贪心策略的核心。
+
+需要特别说明的是数组 V 的初始化值为 `V[1] = 0`，这对应的是 0-path 子问题的前序子问题。0-path 问题中 k == -D == D == 0，在上述分析代码第 4~8 行中直接采取 k == -D 的情况得到 0-path 问题的末端 snake 起始坐标为：`(V[0+1], V[0+1]-0) == (0, 0)`。
+
+代码 11 行将判断末端 snake 终止坐标如果已经到达编辑图终点 (N, M)，则说明字符串比较已经结束，当前 `k, V[k], D` 三元组（实际为四元组 `x, y, k, D`）即为最优解的末端 snake 终点、轨迹偏移、最短编辑距离。
+
+如上算法可以直接得到最短编辑距离 `D` 以及 LCS 长度 `(N+M-D)/2`。但是不能直接得到最优解的 path（即最优解的所有 snake 序列），算法中的每一轮循环结束后，数组 V 中保存了该轮子问题的末端轨迹偏移 k 和末端 snake 终点坐标，但是在求解后续子问题的时候，数组 V 中的值有可能被覆盖，所以算法结束后，无法从原问题回溯到子问题还原出 snake 序列。而要做到这一点，需要在算法的每轮外循环中用一个二维数组 Vs 保存该轮 D 对应的数组 V（对应编辑距离为 D 的所有 D-path 问题集合）。当到达终点 (N, M) 之后，再逆向回溯每一个子问题集合（D-1-paths, D-2-paths,...），在每一个子问题序列中找到最优解 path 上的那个子问题的 snake 并保存，算法如下：
+
+```
+    Constant MAX ∈ [0,M+N]
+    Var V: Array [− MAX .. MAX] of Integer
+    Var Vs: Array [0...MAX] of V
+    Var Snakes: Array [0...MAX]
+
+1.  V[1] ← 0
+2.  For D ← 0 to MAX Do
+3.      For k ← −D to D in steps of 2 Do
+4.          If k = −D or k ≠ D and V[k − 1] < V[k + 1] Then
+5.              x ← V[k + 1]
+6.          Else
+7.              x ← V[k − 1]+1
+8.          y ← x − k
+9.          While x < N and y < M and a x + 1 = by + 1 Do (x,y) ← (x+1,y+1)
+10.         V[k] ← x        
+11.         If x ≥ N and y ≥ M Then
+12.             Vs[D] ← V
+13.             point ← (x, y)
+14.             For d ← D to 0 Do
+15.                 If point.x ≤ 0 or point.y ≤ 0 Then Break
+16.
+18.                 v ← Vs[d], k ← point.x - point.y
+19.                 end ← (v[k], v[k] - k)
+20.
+21.                 If k = -D or k ≠ D and v[k − 1] < v[k + 1] Then
+22.                     start ← (v[k+1], v[k+1] - (k+1))
+23.                     mid ← (start.x, startx - k)
+24.                 Else
+25.                     start ← (v[k-1], v[k-1] - (k-1))
+26.                     mid ← (start.x + 1, start.x + 1 - k)
+27.
+28.                 Snakes.add(start, mid, end)
+29.
+30.                 point ← start
+31.             Stop
+32.     Vs[D] ← V
+33. Length of an SES is greater than MAX
+```
 
 
+这样在原算法的基础上从第 12 行开始添加一个回溯 snakes 的过程。这种回溯 snakes 的方法因为需要一个二维数组来保存每个子问题的解，所以其空间复杂度为 `O(N²)`，这不太适应于问题规模较大且内存空间受限的应用场景。为了对空间复杂度进行渐进意义的优化，接下来继续讨论一种基于分治策略的改进型 Myers 算法，它能将空间复杂度优化为线性复杂度 `O(N)`。
 
+<br>
+<br>
 
+### <a name="ch3">3 基于分治策略的改进——线性空间复杂度</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
 
 
 
