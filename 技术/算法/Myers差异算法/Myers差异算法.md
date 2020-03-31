@@ -55,7 +55,7 @@ Myers 算法的执行过程与上一节描述的方法比较类似：同步遍�
 
 以下就是一个编辑图的例子（来自 Myers 的论文）：
 
-![Edit Graph](images/edit_graph.png "Edit Graph")
+![Edit Graph](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/%E7%AE%97%E6%B3%95/Myers%E5%B7%AE%E5%BC%82%E7%AE%97%E6%B3%95/images/edit_graph.png "Edit Graph")
 
 
 #### <a name="ch2.2">2.2 公共轨迹 snake 和轨迹偏移 k</a>
@@ -148,11 +148,11 @@ For D ← 0 to M+N Do
 
 从 (D-1)-path 到 D-path 的 path 路径图如下所示：
 
-![(D-1)-path to D-path with insert](images/d-1-path-to-d-path-insert.png "(D-1)-path to D-path with insert")
+![(D-1)-path to D-path with insert](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/%E7%AE%97%E6%B3%95/Myers%E5%B7%AE%E5%BC%82%E7%AE%97%E6%B3%95/images/d-1-path-to-d-path-insert.png "(D-1)-path to D-path with insert")
 
 <br>
 
-![(D-1)-path to D-path with delete](images/d-1-path-to-d-path-delete.png "(D-1)-path to D-path with delete")
+![(D-1)-path to D-path with delete](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/%E7%AE%97%E6%B3%95/Myers%E5%B7%AE%E5%BC%82%E7%AE%97%E6%B3%95/images/d-1-path-to-d-path-delete.png "(D-1)-path to D-path with delete")
 
 <br>
 
@@ -247,7 +247,7 @@ Myers 算法的空间优化版基于以下一个引理，这是该算法的第�
 
 考虑发生重叠后，D-path，⌈D/2⌉-path 和 ⌊D/2⌋-path 之间的关系图如下所示：
 
-![Middle snake size](images/middle-snake-size.png "Middle snake size")
+![Middle snake size](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/%E7%AE%97%E6%B3%95/Myers%E5%B7%AE%E5%BC%82%E7%AE%97%E6%B3%95/images/middle-snake-size.png "Middle snake size")
 
 如图所示，当发生重叠时，⌈D/2⌉-path 的末端 snake 为点 q 到 (x,y) 的对角边；⌊D/2⌋-path 的末端 snake 为点 p 到 (u,v) 的对角边。由引理 3 重叠性质可知，(u,v),p,q,(x,y) 四点共线。
 
@@ -337,7 +337,7 @@ Myers 的论文中提供了一个很有意思的问题迁移：如果在编辑�
 
 **参考：**
 
-1. [Myers差异算法论文](images/diff2.pdf)
+1. [Myers差异算法论文](https://github.com/huanzhiyazi/articles/blob/master/%E6%8A%80%E6%9C%AF/%E7%AE%97%E6%B3%95/Myers%E5%B7%AE%E5%BC%82%E7%AE%97%E6%B3%95/images/diff2.pdf) [下载](https://raw.githubusercontent.com/huanzhiyazi/articles/ed11e01ec7859d76620416372ba47af47f4c14bc/%E6%8A%80%E6%9C%AF/%E7%AE%97%E6%B3%95/Myers%E5%B7%AE%E5%BC%82%E7%AE%97%E6%B3%95/images/diff2.pdf)
 2. [Myers' Diff Algorithm : The basic greedy algorithm](http://simplygenius.net/Article/DiffTutorial1)
 3. [Myers算法的在线演示](https://blog.robertelder.org/diff-algorithm/)
 
