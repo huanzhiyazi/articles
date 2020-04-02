@@ -4,6 +4,8 @@
 - <a href="#ch2">**2 问题抽象——Myers差异算法**</a>
 - <a href="#ch3">**3 DiffUtil——Myers差异算法的核心实现和扩展**</a>
     * <a href="#ch3.1">3.1 实现分析</a>
+    * <a href="#ch3.2">3.2 差异分析扩展——移动判断</a>
+    * <a href="#ch3.3">3.3 通知变化</a>
 
 <br>
 <br>
@@ -199,7 +201,7 @@ private static Snake diffPartial(Callback cb, int startOld, int endOld,
             }
             forward[kOffset + k] = x;
             if (checkInFwd && k >= delta - d + 1 && k <= delta + d - 1) {
-                // 缩小覆盖判断范围
+                // 缩小 k 判断范围
                 if (forward[kOffset + k] >= backward[kOffset + k]) {
                     // 左上角 d-path 覆盖右下角 (d-1)-path，计算 middle snake
                     Snake outSnake = new Snake();
@@ -213,7 +215,7 @@ private static Snake diffPartial(Callback cb, int startOld, int endOld,
             }
         }
         for (int k = -d; k <= d; k += 2) {
-            // find reverse path at k + delta, in reverse
+            // 从右下角求解 D-k-path，依赖的前向子问题为 (D-1)-(k±1)-path
             final int backwardK = k + delta;
             int x;
             final boolean removal;
@@ -236,7 +238,9 @@ private static Snake diffPartial(Callback cb, int startOld, int endOld,
             }
             backward[kOffset + backwardK] = x;
             if (!checkInFwd && k + delta >= -d && k + delta <= d) {
+                // 缩小 k 判断范围
                 if (forward[kOffset + backwardK] >= backward[kOffset + backwardK]) {
+                    // 右下角 d-path 覆盖左上角 d-path，计算 middle snake
                     Snake outSnake = new Snake();
                     outSnake.x = backward[kOffset + backwardK];
                     outSnake.y = outSnake.x - backwardK;
@@ -255,8 +259,172 @@ private static Snake diffPartial(Callback cb, int startOld, int endOld,
 }
 ```
 
+#### <a name="ch3.2">3.2 差异分析扩展——移动判断</a>
+
+在第 2 节中已经说明，移动操作实际上可以转化为一对删除和插入操作，所以作为一类通用算法， Myers 算法不需要单独处理移动操作。但是在实际应用中，我们可能需要单独检查这种操作，比如在 RV 中，如果确切知道其中一个 item 的变化是从位置 i 移动到位置 j，那就可以据此对该 item 添加位移动画，做出让人舒适的动效，而不是生硬地变化位置，这对于提升用户体验很有帮助。
+
+移动操作有两种，一种是从前移（i→i-∆），一种是后移（i→i+∆）：
+
+- 对于前移，判断的方法是，从数据列表的末端开始，检查每一个被删除的项是否等于前面插入项，如果相等，则说明该项是前移过来的。检查过程中可以跳过所有 snake，因为这些没有进行编辑无需检查。
+- 对于后移，判断的方法是，从数据列表的末端开始，检查每一个插入项是否等于前面被删除的项，如果相等，则说明该项是后移过来的。同样，可以跳过 snake。
+
+下图是两种移动判断的示意图：
+
+![Detect move](images/detect-move.png "Detect move")
+
+在 DiffUtil.calculateDiff() 返回时，会构造 DiffResult 对象，其构造过程中会根据需要完成移动判断：
+
+```java
+DiffResult(Callback callback, List<Snake> snakes, int[] oldItemStatuses,
+                int[] newItemStatuses, boolean detectMoves) {
+    // 省略...
+
+    // 检查移动和内容变化
+    findMatchingItems();
+}
+```
+
+```java
+private void findMatchingItems() {
+    int posOld = mOldListSize;
+    int posNew = mNewListSize;
+    // 由末端往前进行遍历
+    for (int i = mSnakes.size() - 1; i >= 0; i--) {
+        final Snake snake = mSnakes.get(i);
+        final int endX = snake.x + snake.size;
+        final int endY = snake.y + snake.size;
+        if (mDetectMoves) { // 是否需要检查移动
+            // 前移检查
+            while (posOld > endX) { // 检测到 fromDelete 块，遍历之
+                // 前序遍历每一个 toInsert 块，检查 fromDelete 中的每一个删除元素是否
+                // 与 toInsert 中的插入元素相等
+                findAddition(posOld, posNew, i);
+                posOld--;
+            }
+
+            // 后移检查
+            while (posNew > endY) { // 检测到 fromInsert 块，遍历之
+                // 前序遍历每一个 toDelete 块，检查 fromInsert 中的每一个插入元素是否
+                // 与 toDelete 中的删除元素相等
+                findRemoval(posOld, posNew, i);
+                posNew--;
+            }
+        }
+        // 检查内容变化，省略...
+        posOld = snake.x;
+        posNew = snake.y;
+    }
+}
+```
+
+我们再看一下前移检查 findAddition() 的具体实现：
+
+```java
+private void findAddition(int x, int y, int snakeIndex) {
+    // 省略...
+    findMatchingItem(x, y, snakeIndex, false);
+}
+```
+
+```java
+private boolean findMatchingItem(final int x, final int y, final int snakeIndex,
+                final boolean removal) {
+    final int myItemPos;
+    //int curX;
+    int curY;
+    if (removal) {
+        // 后移省略...
+    } else {
+        myItemPos = x - 1; // fromInsert 块中的当前删除项
+        //curX = x - 1;
+        curY = y; // 第一个 toDelete 块
+    }
+
+    // 逆序遍历所有 toDelete 块
+    for (int i = snakeIndex; i >= 0; i--) {
+        final Snake snake = mSnakes.get(i);
+        final int endX = snake.x + snake.size;
+        final int endY = snake.y + snake.size;
+        if (removal) {
+            // 后移省略...
+        } else {
+            // 遍历当前 toDelete 块
+            for (int pos = curY - 1; pos >= endY; pos--) {
+                // 检查当前 toDelete 中的当前插入项是否等于 fromInsert 中的当前删除项
+                if (mCallback.areItemsTheSame(myItemPos, pos)) {
+                    // 判断为前移，记录状态并返回
+                    final boolean theSame = mCallback.areContentsTheSame(myItemPos, pos);
+                    final int changeFlag = theSame ? FLAG_MOVED_NOT_CHANGED
+                            : FLAG_MOVED_CHANGED;
+                    mOldItemStatuses[x - 1] = (pos << FLAG_OFFSET) | FLAG_IGNORE;
+                    mNewItemStatuses[pos] = ((x - 1) << FLAG_OFFSET) | changeFlag;
+                    return true;
+                }
+            }
+        }
+        //curX = snake.x;
+        curY = snake.y; // 当前 toDelete 块中检查到没有前移项，检查下一个 toDelete 块
+    }
+    return false;
+}
+```
+
+后移检查是前移检查的对称操作，详细代码可阅读 DiffUtil 源码。
+
+不难判断，移动检查需要额外 O(N²) 的时间复杂度，如果在应用中实际无需进行移动渲染操作，建议关闭移动检查开关，避免额外的耗时。
 
 
+#### <a name="ch3.3">3.3 通知变化</a>
+
+ListAdapter 完成异步差异分析之后，会通知主线程进行差异变化通知，RV 作为 ListAdapter 的观察者将观察到这个变化并进行重绘。
+
+经过前面构造出差异分析结果 DiffResult 之后，通知变化的过程就比较简单了，其主要流程就是检查其中的 snake 序列和移动状态记录。关键代码如下：
+
+```java
+public void dispatchUpdatesTo(@NonNull ListUpdateCallback updateCallback) {
+    final BatchingListUpdateCallback batchingCallback;
+    if (updateCallback instanceof BatchingListUpdateCallback) {
+        batchingCallback = (BatchingListUpdateCallback) updateCallback;
+    } else {
+        batchingCallback = new BatchingListUpdateCallback(updateCallback);
+        updateCallback = batchingCallback;
+    }
+
+    final List<PostponedUpdate> postponedUpdates = new ArrayList<>();
+    int posOld = mOldListSize;
+    int posNew = mNewListSize;
+    // 逆序遍历每条 snake
+    for (int snakeIndex = mSnakes.size() - 1; snakeIndex >= 0; snakeIndex--) {
+        final Snake snake = mSnakes.get(snakeIndex);
+        final int snakeSize = snake.size;
+        final int endX = snake.x + snakeSize;
+        final int endY = snake.y + snakeSize;
+        if (endX < posOld) { // 检查到删除
+            // 通知删除变化，如果需要检查移动，也要通知移动变化
+            dispatchRemovals(postponedUpdates, batchingCallback, endX, posOld - endX, endX);
+        }
+
+        if (endY < posNew) { // 检查到插入
+            // 通知插入变化，如果要检查移动，也要通知移动变化
+            dispatchAdditions(postponedUpdates, batchingCallback, endX, posNew - endY,
+                    endY);
+        }
+
+        // 遍历 snake 是否有内容变化，如有，通知之
+        for (int i = snakeSize - 1; i >= 0; i--) {
+            if ((mOldItemStatuses[snake.x + i] & FLAG_MASK) == FLAG_CHANGED) {
+                batchingCallback.onChanged(snake.x + i, 1,
+                        mCallback.getChangePayload(snake.x + i, snake.y + i));
+            }
+        }
+        posOld = snake.x;
+        posNew = snake.y;
+    }
+    batchingCallback.dispatchLastEvent();
+}
+```
+
+dispatchRemovals() 和 dispatchAdditions() 的主要任务是检查移动状态并通知移动变化，代码略。
 
 
 
