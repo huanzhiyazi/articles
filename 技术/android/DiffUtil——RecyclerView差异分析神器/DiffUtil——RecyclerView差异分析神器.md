@@ -53,7 +53,7 @@ RecyclerView（后简称 RV）是如何判断里面的 items 发生了变化的�
 
 RV 的自动化差异分析的入口在 ListAdapter 中，它是 RV.Adapter 的一个子类，如果需要进行自动化差异分析，就可以使用这个适配接口。而核心的差异分析算法实现在 DiffUtil 这个工具类。ListAdapter 实现自动化差异分析的结构图如下：
 
-![RV diff structure](images/recyclerview-diff-structure.png "RV diff structure")
+![RV diff structure](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/DiffUtil%E2%80%94%E2%80%94RecyclerView%E5%B7%AE%E5%BC%82%E5%88%86%E6%9E%90%E7%A5%9E%E5%99%A8/images/recyclerview-diff-structure.png "RV diff structure")
 
 从图中可以看出，总体上来看，差异分析过程是一个计算耗时型任务，所以将其作为一个异步任务放入线程池中，待 DiffUtil 完成差异分析之后，向主线程返回一个差异分析结果——DiffResult，然后通过分析差异结果将差异变化通知给 ListAdapter，RV 观察到 ListAdapter 中的差异变化之后对视图进行重新布局。
 
@@ -63,7 +63,7 @@ Myers 差异算法的实现在 DiffUtil.calculateDiff() 方法中，采用了 My
 
 - 将新老数据列表构造成编辑图，开始求解 D-path。
 - 在编辑图中从 (0,0)→(N,M) 和 (N,M)→(0,0) 两个方向用贪心策略同时求解 D-path。
-- 当两个方向发生覆盖，说明 D-path 已被等分为二，从覆盖路径中求得 middle snake 并保存。
+- 当两个方向发生重叠，说明 D-path 已被等分为二，从重叠路径中求得 middle snake 并保存。
 - 从编辑图中删除 middle snake 并计算左上角的 ⌈D/2⌉-path 和右下角的 ⌊D/2⌋-path 两个子问题的范围，并用相同的贪心策略求解两个子问题并保存子问题对应的 middle snake。
 - 将所有求得的 middle snake 序列按坐标排序，保存到 DiffResult 中并返回。
 
@@ -203,7 +203,7 @@ private static Snake diffPartial(Callback cb, int startOld, int endOld,
             if (checkInFwd && k >= delta - d + 1 && k <= delta + d - 1) {
                 // 缩小 k 判断范围
                 if (forward[kOffset + k] >= backward[kOffset + k]) {
-                    // 左上角 d-path 覆盖右下角 (d-1)-path，计算 middle snake
+                    // 左上角 d-path 与右下角 (d-1)-path 重叠，计算 middle snake
                     Snake outSnake = new Snake();
                     outSnake.x = backward[kOffset + k];
                     outSnake.y = outSnake.x - k;
@@ -240,7 +240,7 @@ private static Snake diffPartial(Callback cb, int startOld, int endOld,
             if (!checkInFwd && k + delta >= -d && k + delta <= d) {
                 // 缩小 k 判断范围
                 if (forward[kOffset + backwardK] >= backward[kOffset + backwardK]) {
-                    // 右下角 d-path 覆盖左上角 d-path，计算 middle snake
+                    // 右下角 d-path 与左上角 d-path 重叠，计算 middle snake
                     Snake outSnake = new Snake();
                     outSnake.x = backward[kOffset + backwardK];
                     outSnake.y = outSnake.x - backwardK;
@@ -263,14 +263,14 @@ private static Snake diffPartial(Callback cb, int startOld, int endOld,
 
 在第 2 节中已经说明，移动操作实际上可以转化为一对删除和插入操作，所以作为一类通用算法， Myers 算法不需要单独处理移动操作。但是在实际应用中，我们可能需要单独检查这种操作，比如在 RV 中，如果确切知道其中一个 item 的变化是从位置 i 移动到位置 j，那就可以据此对该 item 添加位移动画，做出让人舒适的动效，而不是生硬地变化位置，这对于提升用户体验很有帮助。
 
-移动操作有两种，一种是从前移（i→i-∆），一种是后移（i→i+∆）：
+移动操作有两种，一种是前移（i→i-∆），一种是后移（i→i+∆）：
 
 - 对于前移，判断的方法是，从数据列表的末端开始，检查每一个被删除的项是否等于前面插入项，如果相等，则说明该项是前移过来的。检查过程中可以跳过所有 snake，因为这些没有进行编辑无需检查。
 - 对于后移，判断的方法是，从数据列表的末端开始，检查每一个插入项是否等于前面被删除的项，如果相等，则说明该项是后移过来的。同样，可以跳过 snake。
 
 下图是两种移动判断的示意图：
 
-![Detect move](images/detect-move.png "Detect move")
+![Detect move](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/DiffUtil%E2%80%94%E2%80%94RecyclerView%E5%B7%AE%E5%BC%82%E5%88%86%E6%9E%90%E7%A5%9E%E5%99%A8/images/detect-move.png "Detect move")
 
 在 DiffUtil.calculateDiff() 返回时，会构造 DiffResult 对象，其构造过程中会根据需要完成移动判断：
 
