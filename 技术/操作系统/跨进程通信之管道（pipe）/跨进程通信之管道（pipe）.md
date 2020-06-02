@@ -22,7 +22,7 @@ $ ls | wc -l
 
 实际上将 ls 列出的文件名写入到的文件就是管道，组合命令 `ls | wc - l` 的原理就是通过 fork 为 ls 和 wc 各生成一个子进程并通过管道进行通。管道是 Unix 下最古老的跨进程通信方式。
 
-![Pipe shell example](images/pipe_shell_example.png "Pipe shell example")
+![Pipe shell example](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/%E8%B7%A8%E8%BF%9B%E7%A8%8B%E9%80%9A%E4%BF%A1%E4%B9%8B%E7%AE%A1%E9%81%93%EF%BC%88pipe%EF%BC%89/images/pipe_shell_example.png "Pipe shell example")
 
 <br>
 <br>
@@ -77,7 +77,7 @@ int pipe(int filedes[2]);
 
 以下为父子进程间使用管道的的图例：
 
-![Pipe use example](images/pipe_use_example.png "Pipe use example")
+![Pipe use example](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/%E8%B7%A8%E8%BF%9B%E7%A8%8B%E9%80%9A%E4%BF%A1%E4%B9%8B%E7%AE%A1%E9%81%93%EF%BC%88pipe%EF%BC%89/images/pipe_use_example.png "Pipe use example")
 
 <br>
 <br>
