@@ -51,7 +51,7 @@ public static void loop() {
 
 实际上，Looper.loop() 之所以没有引起 ANR，是因为其底层实现了阻塞IO事件通信，一个典型的阻塞IO通信模型如下图所示：
 
-![Blocked IO](images/blocked_io.png "Blocked IO")
+![Blocked IO](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Looper%E4%BA%8B%E4%BB%B6%E9%80%9A%E7%9F%A5%E5%8E%9F%E7%90%86/images/blocked_io.png "Blocked IO")
 
 调用方（进程或线程）从用户空间通过系统调用读取内核中打开的一个文件，若文件中没有数据，则调用方让出 CPU 进入休眠，直到事件产生方写入事件到文件为止，这时内核唤醒调用方并返回通知事件。
 
