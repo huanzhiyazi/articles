@@ -2,6 +2,9 @@
 
 - <a href="#ch1">**1 Looper 中事件通知的疑问**</a>
 - <a href="#ch2">**2 基于阻塞IO的事件通知机制**</a>
+- <a href="#ch3">**3 Looper 实现阻塞IO**</a>
+- <a href="#ch4">**4 Looper 阻塞IO技术选型思考**</a>
+- <a href="#reference">参考</a>
 
 <br>
 <br>
@@ -198,11 +201,6 @@ int Looper::pollInner(int timeoutMillis) {
 
     //...省略
 
-    // Acquire lock.
-    mLock.lock();
-    
-    //...省略
-
     for (int i = 0; i < eventCount; i++) {
         int fd = eventItems[i].data.fd;
         uint32_t epollEvents = eventItems[i].events;
@@ -228,6 +226,7 @@ void Looper::awoken() {
     char buffer[16];
     ssize_t nRead;
     do {
+        // 读取 pipe 中的字节流
         nRead = read(mWakeReadPipeFd, buffer, sizeof(buffer));
     } while ((nRead == -1 && errno == EINTR) || nRead == sizeof(buffer));
 }
@@ -235,7 +234,7 @@ void Looper::awoken() {
 
 Looper.wake()
 
-```java
+```c++
 void Looper::wake() {
     //...省略
     ssize_t nWrite;
@@ -289,7 +288,164 @@ void NativeMessageQueue::wake() {
 }
 ```
 
+- **≥Android6.0 Looper.cpp 关键代码**
 
+构造方法：
+
+```c++
+Looper::Looper(bool allowNonCallbacks)
+    : mAllowNonCallbacks(allowNonCallbacks),
+      mSendingMessage(false),
+      mPolling(false),
+      mEpollRebuildRequired(false),
+      mNextRequestSeq(0),
+      mResponseIndex(0),
+      mNextMessageUptime(LLONG_MAX) {
+
+    // 构造 eventfd 计数器实例并保存 eventfd 文件描述符
+    // mWakeEventFd 是一个 android::base::unique_fd 对象，是一个文件描述符容器
+    mWakeEventFd.reset(eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC));
+
+    //...省略
+
+    rebuildEpollLocked();
+}
+
+void Looper::rebuildEpollLocked() {
+    //...省略
+
+    // 创建 epoll 实例
+    // 和 mWakeEventFd 类似，mEpollFd 也是一个 android::base::unique_fd 类型的文件描述符容器
+    mEpollFd.reset(epoll_create1(EPOLL_CLOEXEC));
+    
+    //...省略
+
+    // 初始化 epoll 请求事件
+    struct epoll_event eventItem;
+    memset(& eventItem, 0, sizeof(epoll_event));
+    eventItem.events = EPOLLIN; // 期待读数据
+    eventItem.data.fd = mWakeEventFd.get();
+    // 添加 eventfd 描述符和请求事件参数
+    int result = epoll_ctl(mEpollFd.get(), EPOLL_CTL_ADD, mWakeEventFd.get(), &eventItem);
+    
+    //...省略
+}
+```
+
+Looper.pollOnce()
+
+```c++
+int Looper::pollOnce(int timeoutMillis, int* outFd, int* outEvents, void** outData) {
+    int result = 0;
+    for (;;) {
+        //...省略
+        result = pollInner(timeoutMillis);
+    }
+}
+
+int Looper::pollInner(int timeoutMillis) {
+    //...省略
+
+    // Poll.
+    int result = POLL_WAKE;
+
+    //...省略
+
+    // epoll 返回事件，用于指定稍后 eventfd 中发生了什么事件
+    struct epoll_event eventItems[EPOLL_MAX_EVENTS];
+    // epoll_wait 系统调用，若 eventfd 计数器为 0 则阻塞，让出 CPU
+    int eventCount = epoll_wait(mEpollFd.get(), eventItems, EPOLL_MAX_EVENTS, timeoutMillis);
+
+    //...省略
+
+    for (int i = 0; i < eventCount; i++) {
+        int fd = eventItems[i].data.fd;
+        uint32_t epollEvents = eventItems[i].events;
+        if (fd == mWakeEventFd.get()) {
+            if (epollEvents & EPOLLIN) { // 期待的可读事件发生
+                // 从 eventfd 中读取发生的事件，该调用主要是确认 eventfd 计数器是否真的能读到消息，如果能读到直接返回，java 层的 Looper.loop() 就知道 MessageQueue 中有 Message 可读了
+                awoken();
+            } else {
+                //...省略
+            }
+        } else {
+            //...省略
+        }
+    }
+
+    //...省略
+
+    return result;
+}
+
+void Looper::awoken() {
+    //...省略
+
+    uint64_t counter;
+    // 读取 eventfd 计数器的值
+    TEMP_FAILURE_RETRY(read(mWakeEventFd.get(), &counter, sizeof(uint64_t)));
+}
+```
+
+Looper.wake()
+
+```c++
+void Looper::wake() {
+    //...省略
+    uint64_t inc = 1;
+    // 向 eventfd 计数器写入一个无符号64位整型通知消息
+    ssize_t nWrite = TEMP_FAILURE_RETRY(write(mWakeEventFd.get(), &inc, sizeof(uint64_t)));
+    //...省略
+}
+```
+
+Looper.wake() 方法一般在 java 层的 Handler 往 MessageQueue 中插入新的 Message 后（MessageQueue.enqueueMessage() 方法）通过本地方法调用。这样内核马上就能知道 eventfd 计数器中有新的消息，Looper.pollOnce() 中的 epoll_wait 系统调用就可以解除阻塞得到返回。
+
+MessageQueue.enqueueMessage() 方法的调用与 ≤Android5.0 中的一致，无须赘述。
+
+<br>
+<br>
+
+### <a name="ch4">4 Looper 阻塞IO技术选型思考</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
+
+- **同一个进程内的线程间通信为什么选择 pipe/eventfd 这种跨进程通信方案？**
+
+原因是为了做到事件通知更及时。如果采用常规的线程间通信方法实现事件通知，则需要手动休眠线程，然后反复去轮询检查事件队列是否有新事件产生。但是这个休眠时间不好控制，设置短了浪费 CPU，设置长了，新事件半天得不到响应和处理。
+
+而 select/poll/epoll + pipe/eventfd 这种跨进程通信方案的本质是让内核监控一个打开的文件的 IO 行为，通过注册事件、监听、阻塞、通知来实现的一套底层观察者模式。如果把 select/poll/epoll + pipe/eventfd 抽象成只是一个观察者模式，那么就不必限定其只能用于 IPC 了。
+
+当然，也可以采用典型的观察者模式，通过线程间引用共享变量+锁实现同步的方案来实现事件通知。但是这无疑引入了更多的耦合性，线程间无法做到很好的隔离，增加了实现的复杂性和出错的可能性。既然 Linux 内核已经提供了更简单更有效的通信方案，何必要重复造轮子呢？
+
+- **IO多路复用方案中为什么选择 epoll，而不用 select/poll？**
+
+在 [IO多路复用——selct,poll,epoll](https://github.com/huanzhiyazi/articles/issues/13) 中我们总结 epoll 相对于 select/poll 的主要性能优势有两点：
+
+1. 在监控大量文件描述符的应用场景中，epoll 比 select/poll 有更大的时间复杂度优势（epoll 查询就绪文件描述符的时间复杂度是 O(1)，而 select/poll 是 O(n)）。
+2. epoll 系统调用比 select/poll 系统调用需要更少的内存拷贝次数（epoll 只需要在返回就绪文件描述符时从内核往用户空间拷贝一次；而 select/poll 需要在调用时从用户空间和内核空间进行两次拷贝）。
+
+很显然，在 Looper 事件通知中，监控的文件描述符数量非常少（2个或者1个），所以第一条优势并不明显。所以，更少的内存拷贝次数应该是选择 epoll 的主要原因。
+
+- **为什么 Android6.0 及以后的版本用 eventfd 替代 pipe 作为通信方案？**
+
+关于这一点，可以参考 [跨进程通信之管道](https://github.com/huanzhiyazi/articles/issues/14) 和 [跨进程通信之eventfd](https://github.com/huanzhiyazi/articles/issues/15)
+
+总结来说，主要原因有两点：
+
+1. pipe 本质上是内核空间分配的一个字节流缓冲器，需要预先为期分配至少 4K 的内存空间，这对于简单的事件通知来说是一种空间浪费。而 eventfd 只是内核空间的一个 64位无符号整型计数器，相比 pipe 可以节省很大的内存空间。
+2. pipe 是单向的，读端和写端是分开的，各需要分配一个文件描述符，对于事件通知模型来说显得过重。且在创建管道的过程中需要通信双方各自关闭未使用的文件描述符，虽属必要，但使用复杂性过高，容易出错。而 eventfd 只需一个文件描述符（内核分配的文件描述符数量是有限的），且对 eventfd 的读操作就是直接清空计数器（如果没有设置信号量原语），操作非常简单高效，几乎就是为事件通知模型量身定做的方案。
+
+<br>
+<br>
+
+### <a name="reference">参考</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
+
+- [android_os_MessageQueue.cpp](https://android.googlesource.com/platform/frameworks/base/+/master/core/jni/android_os_MessageQueue.cpp)
+
+- [Looper.h](https://android.googlesource.com/platform/system/core/+/master/libutils/include/utils/Looper.h)
+
+- [≤Android5.0 Looper.cpp](https://android.googlesource.com/platform/system/core/+/android-5.0.0_r2/libutils/Looper.cpp)
+
+- [≥Android6.0 Looper.cpp](https://android.googlesource.com/platform/system/core/+/master/libutils/Looper.cpp)
 
 
 
