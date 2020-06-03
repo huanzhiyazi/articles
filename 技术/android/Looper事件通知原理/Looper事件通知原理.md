@@ -405,7 +405,7 @@ MessageQueue.enqueueMessage() 方法的调用与 ≤Android5.0 中的一致，�
 
 抛开两个版本的实现细节，Looper 事件通知的总体流程可以抽象如下：
 
-![Looper IO](images/looper_io.png "Looper IO")
+![Looper IO](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Looper%E4%BA%8B%E4%BB%B6%E9%80%9A%E7%9F%A5%E5%8E%9F%E7%90%86/images/looper_io.png "Looper IO")
 
 <br>
 <br>
