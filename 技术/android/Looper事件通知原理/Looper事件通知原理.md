@@ -403,6 +403,10 @@ Looper.wake() 方法一般在 java 层的 Handler 往 MessageQueue 中插入新�
 
 MessageQueue.enqueueMessage() 方法的调用与 ≤Android5.0 中的一致，无须赘述。
 
+抛开两个版本的实现细节，Looper 事件通知的总体流程可以抽象如下：
+
+![Looper IO](images/looper_io.png "Looper IO")
+
 <br>
 <br>
 
