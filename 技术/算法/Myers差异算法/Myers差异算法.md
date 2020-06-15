@@ -193,7 +193,7 @@ For D ← 0 to M+N Do
 20.
 21.                 If k = -D or k ≠ D and v[k − 1] < v[k + 1] Then
 22.                     start ← (v[k+1], v[k+1] - (k+1))
-23.                     mid ← (start.x, startx - k)
+23.                     mid ← (start.x, start.x - k)
 24.                 Else
 25.                     start ← (v[k-1], v[k-1] - (k-1))
 26.                     mid ← (start.x + 1, start.x + 1 - k)
