@@ -124,7 +124,7 @@ For D ← 0 to M+N Do
 6.          Else
 7.              x ← V[k − 1]+1
 8.          y ← x − k
-9.          While x < N and y < M and a x + 1 = by + 1 Do (x,y) ← (x+1,y+1)
+9.          While x < N and y < M and a[x + 1] = b[y + 1] Do (x,y) ← (x+1,y+1)
 10.         V[k] ← x
 11.         If x ≥ N and y ≥ M Then
 12.             Length of an SES is D
@@ -180,7 +180,7 @@ For D ← 0 to M+N Do
 6.          Else
 7.              x ← V[k − 1]+1
 8.          y ← x − k
-9.          While x < N and y < M and a x + 1 = by + 1 Do (x,y) ← (x+1,y+1)
+9.          While x < N and y < M and a[x + 1] = b[y + 1] Do (x,y) ← (x+1,y+1)
 10.         V[k] ← x        
 11.         If x ≥ N and y ≥ M Then
 12.             Vs[D] ← V
