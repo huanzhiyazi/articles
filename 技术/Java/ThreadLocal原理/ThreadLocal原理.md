@@ -1,6 +1,11 @@
 <a name="index">**目录**</a>
 
 - <a href="#ch1">**1 预备知识——斐波拉契散列**</a>
+- <a href="#ch2">**2 ThreadLocal 核心结构**</a>
+- <a href="#ch3">**3 ThreadLocal 散列表读写**</a>
+    * <a href="#ch3.1">3.1 散列表的清理</a>
+    * <a href="#ch3.2">3.2 散列表的冲突</a>
+    * <a href="#ch3.3">3.3 散列表的扩容</a>
 
 <br>
 <br>
@@ -212,8 +217,82 @@ private boolean cleanSomeSlots(int i, int n) {
 
 - 现假定，在散列表中，中间大部分元素已经被回收或者删除，此时散列表内容如下：
 
+| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |
+| - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| 7 | × | × | × | 3 | × | × | 8 | × | × | × | × | × | × | 9 | 0 |
 
+此时，散列表的有效元素为 5，占总长度的 31%（5/16），没有达到扩容阈值（2/3），所以不会执行扩容操作。而下一个即将添加的 ThreadLocal 的 key 值为 17，执行散列函数 `hash(17) = (17 * 0x61c88647) & (16 - 1) = 7`，即散列位置为 `table[7]`。但是 `table[7]` 处的元素已经存放了 key 值为 8 的元素，于是产生冲突，根据线性探测法，将顺移到 `table[8]`。此时散列表如下：
 
+| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |
+| - | - | - | - | - | - | - | - | - | - | - | - | - | - | - | - |
+| 7 | × | × | × | 3 | × | × | 8 | 17 | × | × | × | × | × | 9 | 0 |
+
+#### <a name="ch3.3">3.3 散列表的扩容</a>
+
+散列表的扩容操作相对比较简单，关键步骤有 3 步：
+
+1. 扫描一遍老散列表，清除无效元素。具体操作为每遇到一个需要清理的元素则执行一次读清理过程。
+2. 申请一个两倍容量大小的新的空散列表。
+3. 将老散列表中的元素重新散列到新散列表中。注意，重新散列时的散列函数要用新散列表的长度。
+
+需要注意的是，扩容步骤 3 中的再散列过程也有可能发生冲突。**当元素的 key 值超过新散列表的容量大小时，就有发生冲突的可能**。
+
+扩容代码如下：
+
+```java
+private void rehash() {
+    // 步骤 1：清理老散列表
+    expungeStaleEntries();
+
+    // 实际扩容阈值：(table.len * 2 / 3) * 3 / 4 = table.len / 2
+    if (size >= threshold - threshold / 4)
+        resize(); // 执行扩容
+}
+
+/**
+ * Double the capacity of the table.
+ */
+private void resize() {
+    // 步骤2：申请新散列表
+    Entry[] oldTab = table;
+    int oldLen = oldTab.length;
+    int newLen = oldLen * 2;
+    Entry[] newTab = new Entry[newLen]; 
+    int count = 0;
+
+    // 步骤3：将老散列表元素再散列到新散列表
+    for (int j = 0; j < oldLen; ++j) {
+        Entry e = oldTab[j];
+        if (e != null) {
+            ThreadLocal<?> k = e.get();
+            if (k == null) {
+                e.value = null; // Help the GC
+            } else {
+                int h = k.threadLocalHashCode & (newLen - 1);
+                while (newTab[h] != null) // 扩容再散列也可能发生冲突
+                    h = nextIndex(h, newLen);
+                newTab[h] = e;
+                count++;
+            }
+        }
+    }
+
+    setThreshold(newLen);
+    size = count;
+    table = newTab;
+}
+
+// O(n^2) 的清理
+private void expungeStaleEntries() {
+    Entry[] tab = table;
+    int len = tab.length;
+    for (int j = 0; j < len; j++) {
+        Entry e = tab[j];
+        if (e != null && e.get() == null)
+            expungeStaleEntry(j);
+    }
+}
+```
 
 
 
