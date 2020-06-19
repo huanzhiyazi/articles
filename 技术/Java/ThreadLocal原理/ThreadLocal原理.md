@@ -31,7 +31,7 @@ hash(K) = (K * 0x61c88647) & (hashtable.len - 1)
 
 上一节讲到，ThreadLocal 在当前线程维护了一个散列表，而这个散列表只能由当前线程自己访问，以此来避免该散列表内的数据并发问题。所以 ThreadLocal 基本的结构图如下：
 
-![ThreadLocal Structure](images/threadlocal_structure.png "ThreadLocal Structure")
+![ThreadLocal Structure](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/Java/ThreadLocal%E5%8E%9F%E7%90%86/images/threadlocal_structure.png "ThreadLocal Structure")
 
 如图所示，关键点如下：
 
@@ -114,7 +114,7 @@ LocalMap 的清理过程是在读写 LocalMap 时进行的。
 
 其中，LocalMap 的读清理示意图如下：
 
-![LocalMap get clear](images/localmap_get_clear.png "LocalMap get clear")
+![LocalMap get clear](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/Java/ThreadLocal%E5%8E%9F%E7%90%86/images/localmap_get_clear.png "LocalMap get clear")
 
 读步骤如下：
 
@@ -165,7 +165,7 @@ private int expungeStaleEntry(int staleSlot) {
 
 现在，看一下 LocalMap 的写清理过程：
 
-![LocalMap set clear](images/localmap_set_clear.png "LocalMap set clear")
+![LocalMap set clear](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/Java/ThreadLocal%E5%8E%9F%E7%90%86/images/localmap_set_clear.png "LocalMap set clear")
 
 写步骤如下：
 
