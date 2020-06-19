@@ -57,7 +57,7 @@ public static void loop() {
 
 可以看到，上述的过程即便在一个死循环当中也不会无休止地占用 CPU 资源。在操作系统原理进程生命周期管理中，我们知道当运行中的进程因为缺少资源时会挂起进入等待队列，从运行态进入阻塞态。所以调用方即便在死循环中通过系统调用访问空文件时，内核的进程管理会将其从运行态转变为阻塞态。
 
-那么 Looper.loop() 是如何实现了阻塞 IO 的呢？在继续往下阅读之前，需要提前理解一下 [阻塞IO和IO多路复用机制——select/poll/epoll](https://github.com/huanzhiyazi/articles/issues/13)、[管道（pipe）原理](https://github.com/huanzhiyazi/articles/issues/14)、[Linux eventfd](https://github.com/huanzhiyazi/articles/issues/15)。
+那么 Looper.loop() 是如何实现了阻塞 IO 的呢？在继续往下阅读之前，需要提前了解一下 [阻塞IO和IO多路复用机制——select/poll/epoll](https://github.com/huanzhiyazi/articles/issues/13)、[管道（pipe）原理](https://github.com/huanzhiyazi/articles/issues/14)、[Linux eventfd](https://github.com/huanzhiyazi/articles/issues/15)。
 
 <br>
 <br>
@@ -418,7 +418,7 @@ MessageQueue.enqueueMessage() 方法的调用与 ≤Android5.0 中的一致，�
 
 而 select/poll/epoll + pipe/eventfd 这种跨进程通信方案的本质是让内核监控一个打开的文件的 IO 行为，通过注册事件、监听、阻塞、通知来实现的一套底层观察者模式。如果把 select/poll/epoll + pipe/eventfd 抽象成只是一个观察者模式，那么就不必限定其只能用于 IPC 了。
 
-当然，也可以采用典型的观察者模式，通过线程间引用共享变量+锁实现同步的方案来实现事件通知。但是这无疑引入了更多的耦合性，线程间无法做到很好的隔离，增加了实现的复杂性和出错的可能性。既然 Linux 内核已经提供了更简单更有效的通信方案，何必要重复造轮子呢？
+当然，也可以采用典型的观察者模式，通过线程间引用共享变量+锁实现同步的方案来实现事件通知（wait/notify方案）。但是这无疑引入了更多的耦合性，线程间无法做到很好的隔离，增加了实现的复杂性和出错的可能性。既然 Linux 内核已经提供了更简单更有效的通信方案，何必要重复造轮子呢？
 
 - **IO多路复用方案中为什么选择 epoll，而不用 select/poll？**
 
