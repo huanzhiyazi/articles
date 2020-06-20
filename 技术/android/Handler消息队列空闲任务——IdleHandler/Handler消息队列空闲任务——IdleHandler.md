@@ -11,7 +11,7 @@
 
 我们知道，在 Handler 机制中，Looper 负责轮询读取 MessageQueue 中的消息。实际上，对 MessageQueue 的读取过程分为两个主要的阶段——忙时和闲时。其读取模型如下所示：
 
-![MessageQueue read modal](images/messagequeue_read_modal.png "MessageQueue read modal")
+![MessageQueue read modal](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Handler%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%E7%A9%BA%E9%97%B2%E4%BB%BB%E5%8A%A1%E2%80%94%E2%80%94IdleHandler/images/messagequeue_read_modal.png "MessageQueue read modal")
 
 其要点如下：
 
