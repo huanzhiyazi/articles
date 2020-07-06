@@ -95,7 +95,7 @@ public class UF {
 
 一个快查找的合并图示如下：
 
-![Quick Find Sample](images/quick_find_sample.png "Quick Find Sample")
+![Quick Find Sample](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/%E7%AE%97%E6%B3%95/Union-Find/images/quick_find_sample.png "Quick Find Sample")
 
 不难发现，在快查找中，集合的树状表示可以让树是绝对扁平的，这是 find 操作只需要常量时间复杂度的根本原因。
 
@@ -134,7 +134,7 @@ public class UF {
 
 快合并图示如下：
 
-![Quick Union Sample](images/quick_union_sample.png "Quick Union Sample")
+![Quick Union Sample](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/%E7%AE%97%E6%B3%95/Union-Find/images/quick_union_sample.png "Quick Union Sample")
 
 从图示可以发现，在快合并方法中，随着合并操作的增加，会让集合树变得越来越高，越往后，其 find 和 union 操作需要的时间越多。
 
@@ -194,7 +194,7 @@ public class UF {
 
 基于权重优化的图示如下：
 
-![Weight Improve Sample](images/weight_improve_sample.png "Weight Improve Sample")
+![Weight Improve Sample](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/%E7%AE%97%E6%B3%95/Union-Find/images/weight_improve_sample.png "Weight Improve Sample")
 
 可以看到，与单纯快合并相比，优化后的集合树基本是扁平的。可以不太严谨地想象，基于权重优化的集合树总是会接近保持平衡，而一个有 N 个节点的平衡数的高度为 lgN。实际上，基于权重优化的 UF 操作（union 和 find）的时间复杂度就是 O(lgN)。
 
@@ -247,7 +247,7 @@ public class UF {
 
 路径压缩图示如下：
 
-![Path Compression Sample](images/path_compression_sample.png "Path Compression Sample")
+![Path Compression Sample](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/%E7%AE%97%E6%B3%95/Union-Find/images/path_compression_sample.png "Path Compression Sample")
 
 <br>
 <br>
@@ -268,7 +268,7 @@ Kruskal 算法解决的问题是，在一个带权连通无向图中，寻找一
 
 以下为 UF 实现 Kruskal 算法的演示过程：
 
-![UF Kruskal Demo](images/union_find_kruskal_demo.gif "UF Kruskal Demo")
+![UF Kruskal Demo](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/%E7%AE%97%E6%B3%95/Union-Find/images/union_find_kruskal_demo.gif "UF Kruskal Demo")
 
 
 
