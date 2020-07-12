@@ -1,6 +1,11 @@
 <a name="index">**目录**</a>
 
 - <a href="#ch1">**1 触摸事件分发对象**</a>
+- <a href="#ch2">**2 View 事件分发策略**</a>
+    * <a href="#ch2.1">2.1 事件和操作</a>
+    * <a href="#ch2.2">2.2 ViewGroup 对事件的处理</a>
+    * <a href="#ch2.3">2.3 普通 View 对事件的处理</a>
+- <a href="#ch3">**3 Android 触摸事件分发策略是一种责任链模式**</a>
 
 <br>
 <br>
@@ -82,9 +87,60 @@
 
 ViewGrop 事件分发策略的流程如下图所示：
 
+![ViewGroup dispatch event](images/viewgroup_dispatch_event.png "ViewGroup dispatch event")
 
 
+#### <a name="ch2.3">2.3 普通 View 对事件的处理</a>
 
+同样的，普通 View 对事件的分发策略由 View.dispatchTouchEvent(event) 来实现，也就是所有视图的默认事件分发策略。即，ViewGroup.dispatchTouchEvent(event) 是对默认分发策略的重写。
+
+与 ViewGroup 类似，View 实际上也有事件拦截机制。区别是，ViewGroup 拦截事件的目的是阻止事件继续向子孙节点传递，从而 ViewGroup 自己消费事件；而 View 拦截事件的目的是以用户自定义的事件消费覆盖 View 默认的事件消费。所以 ViewGroup 拦截事件是主动拦截，而 View 拦截事件是被动拦截。
+
+View 拦截事件的方法是 View.TouchListener.onTouch(event)。也就是我们熟知的向 View 注册 onTouch 监听：
+
+```java
+/**
+ * Register a callback to be invoked when a touch event is sent to this view.
+ * @param l the touch listener to attach to this view
+ */
+public void setOnTouchListener(OnTouchListener l) {
+    getListenerInfo().mOnTouchListener = l;
+}
+
+public interface OnTouchListener {
+    /**
+     * @return True if the listener has consumed the event, false otherwise.
+     */
+    boolean onTouch(View v, MotionEvent event);
+}
+```
+
+注意，OnTouchListener.onTouch() 的返回值表示用户自定义的事件监听是否消费该事件。如果事件分发到 View 后，被用户自定义监听消费了，则 View 的默认事件消费将不会执行；否则，执行默认的消费策略。
+
+View 的默认事件消费策略在 View.onTouchEvent(event) 中。默认情况下，View.onTouchEvent(event) 返回 true，即消费所有分发来的事件，除非对 View 设置成不可点击。所以，View 的默认消费策略会有点击操作的逻辑，因为所有的视图默认都是可点击的。
+
+如果要完成更加复杂的操作，必须自定义 View，并重写 View.onTouchEvent(event)。
+
+综上，普通 View 事件分发策略流程如下图所示：
+
+![View dispatch event](images/view_dispatch_event.png "View dispatch event")
+
+<br>
+<br>
+
+### <a name="ch3">3 Android 触摸事件分发策略是一种责任链模式</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
+
+如果忽略事件分发策略的细节，即不关心 dispatchTouchEvent(event) 的内部实现，那么我们可以将事件分发归纳为一个如下抽象的模型：
+
+当一个事件产生后，将该事件发送给一个视图树去处理，首先从一个根节点 ViewGroup 开始，不断地往下层 ViewGorup/View 传递，每到达一个 ViewGorup/View 后都会决定要不要对事件进行处理。若处理则停止向下传递并将处理结果原路上报给事件发送者——Activity；若不处理，则将事件继续传递给下一个 ViewGorup/View，直到最终被其中一个 ViewGorup/View 处理或者全部不处理并将不处理的结果返回给发送者。
+
+这样一种抽象场景很适合用 [责任链模式](https://en.wikipedia.org/wiki/Chain-of-responsibility_pattern) 去实现。责任链模式要求请求发送者和请求接收者进行解耦，请求发送者只负责发送请求和接收处理结果；请求接收者只关心对请求进行解析并判断能不能处理该请求，若不能处理，则将请求发送给下一跳接收者，若能处理则处理请求并将处理结果返回给发送者。这样，不同的请求接收者只需要实现自己对请求的处理逻辑，而不用关心整条请求链是什么样的；同时，新的请求接收者也可以无缝接入请求链。
+
+Android 触摸事件分发中，可以把 Activity 当做请求的发送方，而每一个 ViewGorup/View 都是请求接收者，不同的接收者都通过重写 dispatchTouchEvent （往往还要配套重写 onInterceptTouchEvent 和 onTouchEvent）来对实现各自的请求处理逻辑，即决定要不要处理（拦截），如何处理，对不同的请求如何区别处理等等。责任链的构建通过 layout 文件来实现。
+
+一个典型的责任链模式 UML 图如下：
+
+![Chain of responsibility](images/chain_of_responsibility.png "Chain of responsibility")
 
 
 
