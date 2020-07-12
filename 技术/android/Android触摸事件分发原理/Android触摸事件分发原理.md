@@ -18,7 +18,7 @@
 
 事件在用户空间中会在三个对象中进行派发，分别是：Activity，Window，View。整体来看，事件会在这三个对象中按照层次关系先自顶向下进行事件派发到达目标 View，再自底向上将目标 View 对事件的处理结果进行回传：
 
-![Dispatch from activity](images/dispatch_from_activity.png "Dispatch from activity")
+![Dispatch from activity](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E8%A7%A6%E6%91%B8%E4%BA%8B%E4%BB%B6%E5%88%86%E5%8F%91%E5%8E%9F%E7%90%86/images/dispatch_from_activity.png "Dispatch from activity")
 
 具体来说：
 
@@ -87,7 +87,7 @@
 
 ViewGrop 事件分发策略的流程如下图所示：
 
-![ViewGroup dispatch event](images/viewgroup_dispatch_event.png "ViewGroup dispatch event")
+![ViewGroup dispatch event](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E8%A7%A6%E6%91%B8%E4%BA%8B%E4%BB%B6%E5%88%86%E5%8F%91%E5%8E%9F%E7%90%86/images/viewgroup_dispatch_event.png "ViewGroup dispatch event")
 
 
 #### <a name="ch2.3">2.3 普通 View 对事件的处理</a>
@@ -123,7 +123,7 @@ View 的默认事件消费策略在 View.onTouchEvent(event) 中。默认情况�
 
 综上，普通 View 事件分发策略流程如下图所示：
 
-![View dispatch event](images/view_dispatch_event.png "View dispatch event")
+![View dispatch event](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E8%A7%A6%E6%91%B8%E4%BA%8B%E4%BB%B6%E5%88%86%E5%8F%91%E5%8E%9F%E7%90%86/images/view_dispatch_event.png "View dispatch event")
 
 <br>
 <br>
@@ -140,7 +140,7 @@ Android 触摸事件分发中，可以把 Activity 当做请求的发送方，�
 
 一个典型的责任链模式 UML 图如下：
 
-![Chain of responsibility](images/chain_of_responsibility.png "Chain of responsibility")
+![Chain of responsibility](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E8%A7%A6%E6%91%B8%E4%BA%8B%E4%BB%B6%E5%88%86%E5%8F%91%E5%8E%9F%E7%90%86/images/chain_of_responsibility.png "Chain of responsibility")
 
 
 
