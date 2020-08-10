@@ -1,6 +1,7 @@
 <a name="index">**目录**</a>
 
 - <a href="#ch1">**1 一个 Android 进程都有啥**</a>
+- <a href="#ch2">**2 Zygote 进程的生成**</a>
 
 <br>
 <br>
@@ -24,6 +25,30 @@
 基于以上的分析，一个 Android 进程同样也需要遵循 `copy on write` 原则。所以，我们必须为所有的 Android 进程先生成一个共同的祖先进程——Z，这个 Z 进程首先是一个普通的 Linux 进程，然后在此基础上加载 Android 进程运行所需的所有特定资源和程序。这样每当需要生成一个新的 Android 进程时，比如启动一个新的 APP 时，就只需要从这个 Z 进程 fork 出来（新的 Android 进程将继承 Z 进程的所有资源），然后运行新进程的入口程序（main 函数）即可。
 
 这个 Z 进程就如同所有 Android 子进程的母体一样，不停地孵化出新的 Android 子进程，它有一个形象的名字——Zygote！
+
+<br>
+<br>
+
+### <a name="ch2">2 Zygote 进程的生成</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
+
+以下是 Zygote 进程树结构图：
+
+![Zygote tree](images/zygote_tree.png "Zygote tree")
+
+需要注意的是，充当 Binder 驱动服务 DNS 角色的 ServiceManager，是从 init 进程 fork 而来，而不是由 Zygote 进行孵化的。这也容易理解，ServiceManager 负责 Android 服务的注册和查询，本身不需要通用 Android 进程的特定资源和虚拟机环境，所以不必从 Zygote 进行孵化。
+
+从进程继承关系可以看出，Android 在 Linux 内核加载完成后，将启动第一个系统进程——init。init 进程将从一个脚本文件中（init.rc）读取需要启动的服务，其中就包括启动 ServiceManager 和 Zygote 进程。
+
+Zygote 进程启动后，会完成以下几项重要工作：
+
+- 启动 Android 虚拟机。
+- 预加载 APK 运行所需类、资源和库。这两项就是上节所述 Android 进程所需的特定资源和程序。
+- 启动 SystemServer，这是各种 Android 系统服务的容器，这些系统服务包括：AMS（ActivityManagerService）、WMS（WindowManagerService）、PMS（PowerManagerService）等。
+- 创建 Socket 接口，作为 Socket 服务端接收进程孵化请求（如：AMS 将通过 Socket 向 Zygote 发出创建 APP 进程的请求）。
+- 轮询监听 Socket 请求，并启动孵化出的子进程（即调用子进程的入口程序 main）。
+
+需要注意的是，Zygote 作为 Android 进程孵化服务方，与发起进程孵化请求的客户端（如 AMS）进程之间是通过 Socket 来进行进程间通信的。
+
 
 
 
