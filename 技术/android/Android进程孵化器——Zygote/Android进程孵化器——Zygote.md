@@ -43,11 +43,50 @@ Zygote 进程启动后，会完成以下几项重要工作：
 
 - 启动 Android 虚拟机。
 - 预加载 APK 运行所需类、资源和库。这两项就是上节所述 Android 进程所需的特定资源和程序。
-- 启动 SystemServer，这是各种 Android 系统服务的容器，这些系统服务包括：AMS（ActivityManagerService）、WMS（WindowManagerService）、PMS（PowerManagerService）等。
+- 启动 SystemServer，调用 SystemServer 的入口程序 main。SystemServer 是各种 Android 系统服务的容器，这些系统服务包括：AMS（ActivityManagerService）、WMS（WindowManagerService）、PMS（PowerManagerService）等。
 - 创建 Socket 接口，作为 Socket 服务端接收进程孵化请求（如：AMS 将通过 Socket 向 Zygote 发出创建 APP 进程的请求）。
-- 轮询监听 Socket 请求，并启动孵化出的子进程（即调用子进程的入口程序 main）。
+- 轮询监听 Socket 请求，并启动孵化出的子进程（即调用子进程（比如某个具体的 APP）的入口程序 main）。
 
 需要注意的是，Zygote 作为 Android 进程孵化服务方，与发起进程孵化请求的客户端（如 AMS）进程之间是通过 Socket 来进行进程间通信的。
+
+Zygote 进程启动流程如下图所示：
+
+![Zygote init](images/zygote_init.png "Zygote init")
+
+流程涉及到的类传递如下：app_main.main() -> AppRuntime.start() -> AndroidRuntime.start() -> ZygoteInit.main()
+
+<br>
+<br>
+
+### <a name="ch3">3 startActivity 的流程</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
+
+假设发起 startActivity 命令的进程为 APP-start，而最终执行 startActivity 命令的进程为 APP-create。不难推断，APP-start 和 APP-create 可能是同一个进程也可能是不同的进程。
+
+启动一个 Activity 一般分为两种情况：
+
+1. 该 Activity 所在进程正在运行中，即 APP-create 正在运行。
+2. 该 Activity 所在进程不存在，即 APP-create 还没有创建。
+
+对于情况 1 只需要通过 binder 通信方式在 APP-start -> AMS -> APP-create 之间以 CS 交互的方式完成整个 startActivity 流程即可。
+
+而对于情况 2，很显然必须先为 APP-create 新建一个进程，根据前文分析，新建 APP 进程的任务由 Zygote 来完成。具体而言：
+
+1. APP-start 向 AMS 发送 startActivity 请求，这一步由 binder 实现。
+2. AMS 判断目标 Activity 所在进程不存在，即 APP-create 不存在，发起新建 APP-create 的请求。
+3. AMS 作为 socket 客户端向 Zygote 进程发起 APP-create 孵化请求，并缓存 startActivity 所需参数以待 APP-create 孵化后回头再触发执行。
+4. Zygote 作为 socket 服务端收到来自 AMS 的 APP-create 孵化请求，fork 出一个新的 APP-create，并调用 APP-create 的入口函数（ActivityThread.main())。
+5. APP-create (APP-create 的入口函数 main) 向 AMS 发起应用程序创建请求（attach application），这一步又回到 binder 通信。
+6. AMS 为 APP-create 创建和绑定应用程序，并提取缓存的 startActivity 参数，通知 APP-create 可以创建并启动 Activity。这一步与情况 1 的后半段流程是一样的。
+
+综合情况 1 和情况 2，startActivity 的流程图如下：
+
+![Start Activity](images/start_activity.png "Start Activity")
+
+如图所示，绿线表示情况 1 的流程；红线表示情况 2 的流程。
+
+
+
+
 
 
 
