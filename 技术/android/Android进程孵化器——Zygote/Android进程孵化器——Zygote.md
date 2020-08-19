@@ -2,6 +2,8 @@
 
 - <a href="#ch1">**1 一个 Android 进程都有啥**</a>
 - <a href="#ch2">**2 Zygote 进程的生成**</a>
+- <a href="#ch3">**3 startActivity 的流程**</a>
+- <a href="#ch4">**4 Zygote IPC 为何采用 socket 而不是 binder**</a>
 
 <br>
 <br>
