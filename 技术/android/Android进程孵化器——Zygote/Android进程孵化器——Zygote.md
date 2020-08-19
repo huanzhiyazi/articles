@@ -86,6 +86,10 @@ Zygote 进程启动流程如下图所示：
 
 如图所示，绿线表示情况 1 的流程；红线表示情况 2 的流程。
 
+综合 Zygote 的生成和运行流程，我们就有如下一个总的结构图：
+
+![Zygote](images/zygote.jpg "Zygote")
+
 <br>
 <br>
 
