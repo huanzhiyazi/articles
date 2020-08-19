@@ -88,7 +88,7 @@ Zygote 进程启动流程如下图所示：
 
 综合 Zygote 的生成和运行流程，我们就有如下一个总的结构图：
 
-![Zygote](images/zygote.jpg "Zygote")
+![Zygote](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E8%BF%9B%E7%A8%8B%E5%AD%B5%E5%8C%96%E5%99%A8%E2%80%94%E2%80%94Zygote/images/zygote.jpg "Zygote")
 
 <br>
 <br>
