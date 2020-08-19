@@ -35,7 +35,7 @@
 
 以下是 Zygote 进程树结构图：
 
-![Zygote tree](images/zygote_tree.png "Zygote tree")
+![Zygote tree](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E8%BF%9B%E7%A8%8B%E5%AD%B5%E5%8C%96%E5%99%A8%E2%80%94%E2%80%94Zygote/images/zygote_tree.png "Zygote tree")
 
 需要注意的是，充当 Binder 驱动服务 DNS 角色的 ServiceManager，是从 init 进程 fork 而来，而不是由 Zygote 进行孵化的。这也容易理解，ServiceManager 负责 Android 服务的注册和查询，本身不需要通用 Android 进程的特定资源和虚拟机环境，所以不必从 Zygote 进行孵化。
 
@@ -53,7 +53,7 @@ Zygote 进程启动后，会完成以下几项重要工作：
 
 Zygote 进程启动流程如下图所示：
 
-![Zygote init](images/zygote_init.png "Zygote init")
+![Zygote init](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E8%BF%9B%E7%A8%8B%E5%AD%B5%E5%8C%96%E5%99%A8%E2%80%94%E2%80%94Zygote/images/zygote_init.png "Zygote init")
 
 流程涉及到的类传递如下：app_main.main() -> AppRuntime.start() -> AndroidRuntime.start() -> ZygoteInit.main()
 
@@ -82,7 +82,7 @@ Zygote 进程启动流程如下图所示：
 
 综合情况 1 和情况 2，startActivity 的流程图如下：
 
-![Start Activity](images/start_activity.png "Start Activity")
+![Start Activity](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E8%BF%9B%E7%A8%8B%E5%AD%B5%E5%8C%96%E5%99%A8%E2%80%94%E2%80%94Zygote/images/start_activity.png "Start Activity")
 
 如图所示，绿线表示情况 1 的流程；红线表示情况 2 的流程。
 
