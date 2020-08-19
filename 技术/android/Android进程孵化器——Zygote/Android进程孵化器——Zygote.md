@@ -84,6 +84,34 @@ Zygote 进程启动流程如下图所示：
 
 如图所示，绿线表示情况 1 的流程；红线表示情况 2 的流程。
 
+<br>
+<br>
+
+### <a name="ch4">4 Zygote IPC 为何采用 socket 而不是 binder</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
+
+我们知道，binder 是 Android 框架层广泛使用的 IPC 机制。但是前文我们反复强调 Zygote 进程与 SystemServer 进程之间采用的是 socket 来实现的进程间通信。初一看不免让人疑惑，为什么广泛使用的高效率 binder 通信机制没有应用到 Zygote 上来呢？
+
+首先需要注意的是，采用 binder 通信机制要求创建一个 binder 线程池来处理 binder 的读写。也就是说采用 binder 通信的进程必须是多线程的。说的更啰嗦一点就是，假如 Zygote 采用 binder 实现 IPC，Zygote 进程必须是多线程的。但是这与 Zygote 不采用 binder 有何关系呢？这就需要我们看其二。
+
+其次，Zygote 是通过 fork 系统调用来完成进程孵化的。而恰恰是 fork 限制了 Zygote 在多线程环境下的执行。我们看看 POSIX 对 [fork](https://pubs.opengroup.org/onlinepubs/9699919799/functions/fork.html) 在多线程环境下的使用限制就明白了：
+
+>A process shall be created with a single thread. If a multi-threaded process calls fork(), the new process shall contain a replica of the calling thread and its entire address space, possibly including the states of mutexes and other resources. 
+
+此段大意是，一个进程被创建的时候应该是单线程的。如果一个多线程的进程调用 fork()，新建的子进程只拷贝了父进程中执行 fork() 调用的那个线程，此外还有父进程的完整地址空间，互斥锁状态和其它资源。
+
+从这个结论来看，假如 Zygote 携带 binder 线程池执行 fork 操作，那么被孵化的 SystemServer 和 APP 中都不会拷贝 Zygote 中的 binder 线程。这似乎也并没有什么问题，因为被 fork 出的子进程完全可以重新生成一个 binder 线程池，但这并不是问题的根源。根源在于最后一句 `possibly including the states of mutexes and other resources`，在子进程中还可能包含父进程互斥锁的状态。我们再看一下 POSIX 对上述结论的原因分析：
+
+>The general problem with making fork() work in a multi-threaded world is what to do with all of the threads. There are two alternatives. One is to copy all of the threads into the new process. This causes the programmer or implementation to deal with threads that are suspended on system calls or that might be about to execute system calls that should not be executed in the new process. The other alternative is to copy only the thread that calls fork(). This creates the difficulty that the state of process-local resources is usually held in process memory. If a thread that is not calling fork() holds a resource, that resource is never released in the child process because the thread whose job it is to release the resource does not exist in the child process.
+
+总结其大意就是，在多线程环境下调用 fork() 只能有两种方案：
+
+1. 把父进程的所有子线程都拷贝到子进程中。这样做的问题是，这些线程在父进程中执行的操作，在子进程可能也会被执行一遍，而子进程往往并不需要执行这些操作。比如把一个正在执行转账操作的线程也拷贝到子进程，后果可想而知。
+2. 采用 POSIX 现行方案，只拷贝调用 fork() 的线程。但是在多线程环境下也会有问题，因为父进程资源的状态（锁状态）也会拷贝进了子进程，假如父进程中的其它线程正在执行同步操作，对某个资源进行了锁定，那么子进程中该资源也是被锁定状态，但是持有该资源锁的线程并没有被拷贝进来，那么这个锁将一直得不到释放。
+
+POSIX 认为方案 1 比方案 2 造成的后果更严重。而方案 2 存在的问题只能通过建议开发者尽量不要在多线程环境下调用 fork()。或者如 [OSF](http://www.doublersolutions.com/docs/dce/osfdocs/htmls/develop/appdev/Appde193.htm#:~:text=The%20fork(%20)%20system%20call%20creates,time%20of%20the%20fork(%20).) 中采用的一个解决方案，等待父进程中其它线程全部完成任务后再执行 fork()，但是这样一般操作起来比较复杂。
+
+综上，我们可以得出结论，binder 的多线程特点和 fork 对多线程环境的限制，决定了在 Zygote 中采用 binder 机制会有死锁的风险。故 Zygote 不采用 binder 作为 IPC 通信方案。
+
 
 
 
