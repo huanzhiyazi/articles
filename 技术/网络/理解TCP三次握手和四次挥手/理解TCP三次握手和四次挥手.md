@@ -12,7 +12,7 @@
 
 先看一下三次握手建立连接的图示：
 
-![TCP connect](images/tcp_connect.png "TCP connect")
+![TCP connect](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/%E7%BD%91%E7%BB%9C/%E7%90%86%E8%A7%A3TCP%E4%B8%89%E6%AC%A1%E6%8F%A1%E6%89%8B%E5%92%8C%E5%9B%9B%E6%AC%A1%E6%8C%A5%E6%89%8B/images/tcp_connect.png "TCP connect")
 
 为什么需要三次握手呢？关键的原因是 **通信双方为了相互确认对方收发信息的能力都是正常的**。这也是 TCP 建立连接的目的。具体而言：
 
@@ -29,7 +29,7 @@
 
 先看一下四次挥手断开连接的图示：
 
-![TCP disconnect](images/tcp_disconnect.png "TCP disconnect")
+![TCP disconnect](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/%E7%BD%91%E7%BB%9C/%E7%90%86%E8%A7%A3TCP%E4%B8%89%E6%AC%A1%E6%8F%A1%E6%89%8B%E5%92%8C%E5%9B%9B%E6%AC%A1%E6%8C%A5%E6%89%8B/images/tcp_disconnect.png "TCP disconnect")
 
 需要四次挥手断开连接的关键原因是，**通信双方为了相互确认对方不再发送数据给自己了**。为什么只需要确认不再发送信息而不需要确认接收信息呢？因为接收信息是对方自己可以完全处理的事情，不需要自己关心，而对方如果还需要发送信息，那必须等待对方发完，否则最终自己接收到的信息可能就是不完整的。
 
