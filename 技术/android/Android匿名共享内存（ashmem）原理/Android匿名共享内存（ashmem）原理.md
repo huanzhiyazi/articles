@@ -1,6 +1,16 @@
+<a name="index">**目录**</a>
+
 - <a href="#ch1">**1 进程间通信之共享内存**</a>
+    * <a href="#ch1.1">1.1 什么是虚拟内存</a>
+    * <a href="#ch1.2">1.2 什么是内存共享</a>
+    * <a href="#ch1.3">1.3 基于 mmap 实现的内存共享</a>
 - <a href="#ch2">**2 Linux POSIX 共享内存接口 shm_open**</a>
+    * <a href="#ch2.1">2.1 tmpfs 临时文件系统</a>
 - <a href="#ch3">**3 Android ashmem 共享内存原理**</a>
+    * <a href="#ch3.1">3.1 ashmem设备</a>
+    * <a href="#ch3.2">3.2 ashmem_open</a>
+    * <a href="#ch3.3">3.3 ashmem_mmap</a>
+    * <a href="#ch3.4">3.4 ashmem设备在进程间的传递</a>
 - <a href="#ch4">**4 Android ashmem 的使用场景**</a>
 
 <br>
@@ -248,7 +258,7 @@ static struct miscdevice ashmem_misc = {
 
 其初始化中我们重点关注两个部分：第一是 ashmem设备的 open 和 mmap 这两个驱动函数，其对应的实现分别是 ashmem_open 和 ashmem_mmap；第二是 ashmem_area_cachep 这个全局变量，其用于分配 ashmem 共享内存，准确的说是一个用于表示 ashmem 共享内存的数据结构，叫做 ashmem_area。ashmem 与上一节描述的 Linux 共享内存在实现上的差异主要就是体现在这两部分。
 
-#### <a name="ch3.1">3.1 ashmem_open</a>
+#### <a name="ch3.2">3.2 ashmem_open</a>
 
 在执行系统调用 `open('/dev/ashmem',...)` 之后，最终会进入到驱动函数 ashmem_open。
 
@@ -292,7 +302,7 @@ static int ashmem_open(
 }
 ```
 
-#### <a name="ch3.2">3.2 ashmem_mmap</a>
+#### <a name="ch3.3">3.3 ashmem_mmap</a>
 
 ashmem设备的 mmap 驱动也主要完成两件事：
 
@@ -353,7 +363,7 @@ out:
 }
 ```
 
-#### <a name="ch3.3">3.3 ashmem设备在进程间的传递</a>
+#### <a name="ch3.4">3.4 ashmem设备在进程间的传递</a>
 
 到目前为止，我们已经分析了单个进程如何实现 ashmem文件映射。理论上，根据第 1 节的分析，要实现 ashmem 共享内存，只需要两个进程分别都对 ashmem设备执行一遍 open 和 mmap 系统调用即可。但是 前面我们分析了 ashmem_open 每次调用都会分配一个新的 asma 共享内存，所以如果有两个进程都调用了 `open('/dev/ashmem',...)` 之后，会生成两个设备文件 file 结构体，它们各自拥有独立的 asma 共享内存，也就是说，这两个进程之间根本没有共享内存可言，如下图所示：
 
