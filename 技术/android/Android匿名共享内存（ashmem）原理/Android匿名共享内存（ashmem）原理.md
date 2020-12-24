@@ -396,7 +396,15 @@ ashmem 在这里是通过 binder 驱动来实现的，其基本原理如下：
 
 ### <a name="ch4">4 Android ashmem 的使用场景</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
 
+ashmem 是基于 tmpfs 文件系统来实现的。在 Linux 下，tmpfs 文件系统的大小默认为物理内存的一半，而 ashmem 在向 tmpfs 申请空间的时候也并没有对申请大小做出特别的限制，同时 tmpfs 又是内存文件系统，所以理论上 ashmem 实现的共享内存 IPC 在时间上不输 binder 通信，在空间上又没有 binder 通信的限制，这很适合在需要传递大量数据的实时通信场景。
 
+一个典型的应用是 Android 窗口刷新。Android 窗口刷新也是基于 CS 模式的。Android 的窗口一般会由几个客户端进程来提供，比如提供顶部状态栏窗口的进程、提供底部虚拟按键栏窗口的进程、以及提供中间主体内容窗口的进程。每个进程都负责屏幕各自区域的图像数据刷新，在 VSYNC 信号驱动下，各个客户端进程会将各自的窗口数据传递给服务端窗口进程来合成，服务端进程将合成的窗口数据刷新到屏幕上：
+
+![android window shm](images/android_window_shm.png "android window shm")
+
+这种情况下，窗口图像数据一般都比较大，而且有实时性能要求，而 ashmem 正好满足这两个要求。
+
+关于 Android 窗口管理，我们将在专门的文章中进行讨论。
 
 
 
