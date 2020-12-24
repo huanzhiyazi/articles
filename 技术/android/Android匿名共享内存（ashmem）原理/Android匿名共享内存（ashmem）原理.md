@@ -82,7 +82,7 @@ mmap 系统调用成功后，将返回新映射的起始虚拟地址。
 
 Linux 下有两种类型的设备：字符设备和块设备。字符设备每次只能处理一个字符，比如终端和键盘；块设备每次处理一块数据，比如磁盘设备。另外，设备可以是实际存在的物理实体设备，也可以是虚拟出来的设备，对于操作系统来说，不管是实体设备还是虚拟设备都提供统一的设备处理接口，都是抽象的设备。
 
-在 Linux 下，一切皆文件，于上层来说，简化了接口，隐藏了细节。设备也不例外，每个设备都被抽象成一个文件，叫做设备文件。每个设备都对应 /dev 目录下的一个文件节点，且都有一个主设备号和次设备号。主设备号相同的设备（文件），使用相同的驱动程序来处理对设备的 I/O 请求，这些驱动程序都有对应的系统调用（比如 open()、close()、read()、write()、mmap()以及 ioctl()）。
+在 Linux 下，一切皆文件，于上层来说，简化了接口，隐藏了细节。设备也不例外，每个设备都被抽象成一个文件，叫做设备文件。每个设备都对应 /dev 目录下的一个文件节点，且都有一个主设备号和次设备号。主设备号相同的设备（文件），通常使用相同的驱动程序来处理对设备的 I/O 请求，这些驱动程序都有对应的系统调用（比如 open()、close()、read()、write()、mmap()以及 ioctl()）。
 
 举个例子，比如主设备号为 8 的设备是 SCSI磁盘设备，而磁盘设备根据分区又分为很多子设备，其文件名均以 /dev/sd** 开头，每个子设备都通过不同的次设备号来区分。那么当对一个普通文件进行 open、read、mmap 等操作时，最终都关联到主设备号为 8 的设备驱动程序来处理。
 
@@ -202,6 +202,173 @@ Android ashmem 共享内存的也是基于 tmpfs 文件系统来实现的，与 
 <br>
 
 ### <a name="ch3">3 Android ashmem 共享内存原理</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
+
+到目前为止，我们用大量篇幅分析了 Linux 共享内存原理及相关实现原理，都是为本节分析 Android 匿名共享内存做铺垫，因为 Android 匿名共享内存（ashmem）的底层逻辑与前述 Linux 共享内存的实现原理是一致的，只是在实现细节上结合了一些 Android 框架的特性以及自带锁保护机制实现共享内存的同步访问。
+
+**ashmem 以 mmap 实现共享文件映射，以 tmpfs 临时文件系统作为共享文件，以 binder 驱动作为进程间传递共享文件句柄的桥梁。**
+
+#### <a name="ch3.1">3.1 ashmem设备</a>
+
+**纽带文件**： 在前面分析基于共享文件实现共享内存的时候，文件是一个关键点，先由 open 打开文件，然后再由 mmap 将文件进行映射，两个通信的进程都以同一个文件作为纽带。如前分析，这里的文件既可以是普通的磁盘文件，也可以直接是一个设备文件，但是真正被共享的文件却不一定就是传入的这个文件，传入的文件其主要作用是作为通信进程间的纽带，或者说有了这个纽带文件，进行通信的多个进程就能通过这个纽带文件去找到真正的共享文件。
+
+也就是说，从应用程序的角度看 open 和 mmap 系统调用中的文件名和文件描述符，逻辑上来讲可以将纽带文件当成是共享文件，但从物理层面上看纽带文件不一定是共享文件。
+
+ashmem 中的纽带文件是一个设备，叫 ashmem设备，这是一个虚拟的字符设备，隶属于杂项设备（misc 设备，主设备号为 10），其文件名为 `/dev/ashmem`。Android 系统启动时便会对 ashmem设备进行注册和初始化，在内核 inode 表中将生成该设备的 inode 节点以便后续打开该设备文件所用。以下是其初始化关键代码：
+
+```c
+static int __init ashmem_init(void)
+{
+    int ret;
+    ashmem_area_cachep = kmem_cache_create("ashmem_area_cache",
+                      sizeof(struct ashmem_area),
+                      , , NULL);
+    // ...省略
+
+    ret = misc_register(&ashmem_misc);  
+
+    // ...省略  
+
+    return;                                                         
+}                                                                     
+                                                                      
+static struct file_operations ashmem_fops = {
+    .owner = THIS_MODULE,
+    .open = ashmem_open,
+    .mmap = ashmem_mmap, 
+    // ...省略
+}; 
+
+static struct miscdevice ashmem_misc = {
+    .minor = MISC_DYNAMIC_MINOR,
+    .name = "ashmem",
+    .fops = &ashmem_fops,
+};
+```
+
+其初始化中我们重点关注两个部分：第一是 ashmem设备的 open 和 mmap 这两个驱动函数，其对应的实现分别是 ashmem_open 和 ashmem_mmap；第二是 ashmem_area_cachep 这个全局变量，其用于分配 ashmem 共享内存，准确的说是一个用于表示 ashmem 共享内存的数据结构，叫做 ashmem_area。ashmem 与上一节描述的 Linux 共享内存在实现上的差异主要就是体现在这两部分。
+
+#### <a name="ch3.1">3.1 ashmem_open</a>
+
+在执行系统调用 `open('/dev/ashmem',...)` 之后，最终会进入到驱动函数 ashmem_open。
+
+ashmem设备的 open 驱动主要完成两件事：
+
+1. 由 ashmem_area_cachep 分配一块 ashmem共享内存 asma，asma 是一个 ashmem_area 结构体，用于描述 ashmem共享内存：
+
+```c
+struct ashmem_area {
+    char name[ASHMEM_FULL_NAME_LEN]; /* 共享内存名字，记录在 /proc/pid/maps */
+    struct list_head unpinned_list; /* 记录所有共享内存块，用于内存管理 */
+    struct file *file;        /* 真正的共享文件指针 */
+    size_t size;            /* 共享内存大小，字节 */
+    unsigned long prot_mask;    /* 控制掩码 */
+};
+```
+
+当中最重要的一个字段是 file，这个才是 ashmem共享内存中真正的共享文件，从 tmpfs 文件系统分配。
+
+2. 将 asma 记录在设备文件的私有数据字段，这样后续只要能够找到 ashmem设备文件，就能找到 asma 共享内存，就能找到真正的共享文件。
+
+关键代码如下：
+
+```c
+static int ashmem_open(
+    struct inode *inode, // 表示 ashmem设备文件的 inode 结构体
+    struct file *file // 表示 ashmem设备文件的 file 结构体
+) {
+    struct ashmem_area *asma;
+
+    // ...省略
+
+    // 分配 asma
+    asma = kmem_cache_zalloc(ashmem_area_cachep, GFP_KERNEL);
+
+    // ...省略
+
+    // 将 asma 记录在设备文件中
+    file->private_data = asma;
+    return 0;
+}
+```
+
+#### <a name="ch3.2">3.2 ashmem_mmap</a>
+
+ashmem设备的 mmap 驱动也主要完成两件事：
+
+1. 向 tmpfs 文件系统申请创建一个共享文件，并记录在 asma 共享内存中。
+
+我们在第 2 节分析 POSIX 共享内存函数 shm_open 的原理的时候知道，可以在 tmpfs 目录（`/dev/shm`）下指定一个文件名来打开并创建一个 tmpfs 文件。即直接执行 shm_open 系统调用即可。不过这种方法返回是共享文件的文件描述符，而这里我们不需要通过文件描述符再去访问文件了，而是直接指定共享文件的 file 结构体就可以了。所以，ashmem_mmap 函数直接调用的 Linux 内核共享文件创建函数 `struct file* shmem_file_setup(const char *name, loff_t size, unsigned long flags)` 来从 tmpfs 文件系统创建一个共享文件，并直接返回共享文件的 file 结构体。
+
+2. 将共享文件映射到 mmap 系统调用分配的虚拟空间中。
+
+我们在 1.3 节中曾经解释过，设备驱动函数 mmap 的一个主要作用就是把一个 **合适的文件** 指定到 vma->vm_file 上，以完成映射。这里，合适的文件便是值得上一步创建的 tmpfs 共享文件。
+
+关键代码如下：
+
+```c
+static int ashmem_mmap(
+    struct file *file, // ashmem设备文件
+    struct vm_area_struct *vma // mmap系统调用分配的虚拟空间
+) {
+    // 从设备文件取共享内存
+    struct ashmem_area *asma = file->private_data;
+    int ret = 0;
+
+    // 互斥锁保护
+    mutex_lock(&ashmem_mutex);
+
+    // ...省略
+
+    if (!asma->file) { // 共享文件只需要设置一次
+        char *name = ASHMEM_NAME_DEF;
+        struct file *vmfile;
+
+        if (asma->name[ASHMEM_NAME_PREFIX_LEN] != '\0')
+            name = asma->name;
+
+        // 向 tmpfs文件系统申请并创建一个共享文件，asma->size 必须提前通过 ioctl 设置，过程略
+        vmfile = shmem_file_setup(name, asma->size, vma->vm_flags);
+
+        // ...省略
+
+        asma->file = vmfile;
+    }
+
+    // ...省略
+
+    if (vma->vm_flags & VM_SHARED)
+        // 共享文件映射，主要功能是指定 vma->vm_file = asma->file
+        shmem_set_file(vma, asma->file);
+    else {
+        if (vma->vm_file)
+            fput(vma->vm_file);
+        vma->vm_file = asma->file;
+    }
+    vma->vm_flags |= VM_CAN_NONLINEAR;
+
+out:
+    mutex_unlock(&ashmem_mutex);
+    return ret;
+}
+```
+
+#### <a name="ch3.3">3.3 ashmem设备在进程间的传递</a>
+
+到目前为止，我们已经分析了单个进程如何实现 ashmem文件映射。理论上，根据第 1 节的分析，要实现 ashmem 共享内存，只需要两个进程分别都对 ashmem设备执行一遍 open 和 mmap 系统调用即可。但是 前面我们分析了 ashmem_open 每次调用都会分配一个新的 asma 共享内存，所以如果有两个进程都调用了 `open('/dev/ashmem',...)` 之后，会生成两个设备文件 file 结构体，它们各自拥有独立的 asma 共享内存，也就是说，这两个进程之间根本没有共享内存可言，如下图所示：
+
+![ashmem open again](images/ashmem_open_again.png "ashmem open again")
+
+其实这样的设置对 Android 系统而言也是合理的，因为我们要实现一个共享内存方案，不光需要有一组进程可以进行共享内存IPC，而且我们需要实现同时有很多进程组的共享内存IPC，每个进程组之间可以通过共享内存实现IPC，且各个进程组之间相互隔离：
+
+![shmem groups](images/shmem_groups.png "shmem groups")
+
+所以，我们如何才能实现两个进程间 asma 真正的共享呢？也就是说，当一个服务进程 SP 通过 open 和 mmap 映射了一块 ashmem 共享内存的时候，如何让客户端进程 CP 也从内核中取到由 SP 打开的 ashmem设备文件结构体 ashmem file 呢？
+
+ashmem 在这里是通过 binder 驱动来实现的，其原理如下：
+
+
+
+
 
 
 
