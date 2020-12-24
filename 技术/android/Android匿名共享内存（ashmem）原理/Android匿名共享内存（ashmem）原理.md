@@ -1,6 +1,7 @@
 - <a href="#ch1">**1 进程间通信之共享内存**</a>
 - <a href="#ch2">**2 Linux POSIX 共享内存接口 shm_open**</a>
 - <a href="#ch3">**3 Android ashmem 共享内存原理**</a>
+- <a href="#ch4">**4 Android ashmem 的使用场景**</a>
 
 <br>
 <br>
@@ -364,7 +365,40 @@ out:
 
 所以，我们如何才能实现两个进程间 asma 真正的共享呢？也就是说，当一个服务进程 SP 通过 open 和 mmap 映射了一块 ashmem 共享内存的时候，如何让客户端进程 CP 也从内核中取到由 SP 打开的 ashmem设备文件结构体 ashmem file 呢？
 
-ashmem 在这里是通过 binder 驱动来实现的，其原理如下：
+ashmem 在这里是通过 binder 驱动来实现的，其基本原理如下：
+
+- 我们知道，Android 进程间普遍通过 binder 驱动实现 IPC，而 binder 驱动中维护了所有待通信的 Android 进程，这一点大家要先明白。也就是说，所有通过 binder 进行 IPC 的进程，对于 binder 驱动都是可见的。
+
+- 假设服务进程 SP 已经完成了 ashmem共享内存的映射，这时 binder 驱动可以读取到 SP 的 ashmem设备文件描述符 sfd；假设客户端进程 CP 想向 SP 请求共享内存通信，并通过 binder 向 SP 发送这一请求。
+
+- binder 根据 CP 的进程文件描述符表，计算出一个空闲的文件描述符 cfd，用于之后索引 ashmem设备文件。
+
+- binder 根据 sfd 从内核取到 ashmem设备文件 file 结构体 afile。
+
+- binder 将 cfd 和 afile 插入到 CP 的进程文件描述符表中。
+
+- SP 通过 binder 最终响应 CP 的共享内存通信请求，以 binder 的方式将 cfd 返回给 CP。
+
+这时，在 CP 的进程描述符表中增加了一项 ashmem设备文件的索引项，且其 file 结构体与 SP 进程描述符表中的 ashmem设备文件 file 结构体指向相同。
+
+最后，CP 只需要执行系统调用 `mmap(..., cfd, ...)` 便将同一个共享文件映射到了自己的虚拟空间，从而实现了和 SP 的内存共享。
+
+![ashmem transfer fd](images/ashmem_transfer_fd.png "ashmem transfer fd")
+
+总结来说，binder 做了两件事，一是将服务进程打开的 ashmem设备文件，即纽带文件挂载在客户端进程的文件描述符表中；二是为客户端进程生成新的纽带文件描述符并传回给客户端。
+
+至于为什么 ashmem 叫匿名共享内存，实际上对于服务进程来说，从打开 ashmem设备文件的角度，ashmem设备文件是有文件名的。这里的匿名主要针对的是客户端进程，对于客户端进程来说，因为不需要执行 open 系统调用来得到纽带文件描述符，所以不需要知道纽带文件名（即 ashmem设备文件名），而是通过 binder 将新的纽带文件描述符回传给客户端来实现共享内存的。
+
+在 Java 层有一个封装的 ashmem API：android.os.MemoryFile，其使用方法不再赘述。
+
+<br>
+<br>
+
+### <a name="ch4">4 Android ashmem 的使用场景</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
+
+
+
+
 
 
 
