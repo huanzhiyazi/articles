@@ -149,7 +149,36 @@ Android 是基于 Linux 的，所以在 Android 设备上绘制图像同样也�
 
 既然所有的帧绘制任务没有被终止，且已经生成的帧在显示前也没有从缓冲区清空，那么所谓的 **丢帧** 并不是指的帧被丢弃不显示，而是因为各种性能原因，已经生成的帧缓存在缓冲区，等待被生成的帧被阻塞，从而被 **延迟显示** 而已。
 
-从用户的视角看就是，
+试想一下，一个帧序列在显示过程中，突然有几帧生成过慢，原本的帧缓冲不够用了，于是产生了 jank现象，连续显示几个老帧，这在用户看来就是画面卡住了，然后等慢帧生成完毕继续恢复帧生成速度，动画又恢复了。当 APP 性能运行太差，这样的过程反复出现，就会看到动画过程经常卡顿，造成帧丢了的假想。
+
+<br>
+<br>
+
+### <a name="ch3">3 framebuffer多缓冲的实现原理</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
+
+framebuffer多缓冲一般有两种实现方法，我们以双缓冲为例来说明一下，对于三缓冲、四缓冲，实现也是类似的。两种实现方法的共同点是都会把缓冲分为两部分：
+
+- **背景缓冲（backbuffer）**：用于保存正在生成的帧，对应生成帧时机，所以也可以叫生成帧缓冲。
+
+- **前景缓冲（frontbuffer）**：用于保存即将显示的帧，对应显示帧时机，所以也可以叫显示帧缓冲。
+
+#### <a name="ch3.1">3.1 软件双缓冲</a>
+
+在软件双缓冲实现中，framebuffer 本身全部作为 frontbuffer，其大小也只有一屏大小，而 backbuffer 由物理内存分配。新的帧生成只在 backbuffer 中进行，生成完毕后，等待下一个 Vsync 信号到达且在显示帧时机之前从 backbuffer 将新帧数据拷贝到 frontbuffer 中用于显示。如下图所示：
+
+![Software double buffer](images/software_double_buffer.png "Software double buffer")
+
+从图中可以看到，Vsync 到达后，有两个细分过程：先将数据从 backbuffer 拷贝到 frontbuffer，然后将数据从 frontbuffer 到显示，所以在这种情况下，需要对 Vsync 的触发时机和显示屏的扫描时机进行一个微调同步，保证在扫描数据之前，backbuffer 中的数据已经拷贝到 frontbuffer 中了，因为两块缓存分属不同的硬件，在拷贝时需要触发总线传输，所以需要在扫描前留足时间拷贝数据。
+
+#### <a name="ch3.2">3.2 翻页（Page-flipping）双缓冲</a>
+
+与软件双缓冲不同，翻页双缓冲技术中，framebuffer 本身拥有足够的空间，也就是说 backbuffer 和 frontbuffer 都在 framebuffer 中。在双缓冲实现中，只需要将 framebuffer 一分为二：buffer0 和 buffer1。然后设置两个指针：frontbuffer指针和 backbuffer指针，它们分别指向 buffer0 或 buffer1，当显示完一帧之后，两个指针的指向进行互换即可，就好像翻页一样。如下图所示：
+
+![Page flipping double buffer](images/page_flipping_double_buffer.png "Page flipping double buffer")
+
+在翻页双缓冲中，因为 frontbuffer 和 backbuffer 都在 framebuffer 中，生成帧直接在 framebuffer 中进行，所以无需通过总线拷贝数据，显示帧时机和生成帧时机也更可控，比软件双缓冲技术性能更好。
+
+
 
 
 
