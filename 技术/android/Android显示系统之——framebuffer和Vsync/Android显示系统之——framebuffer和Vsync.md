@@ -7,7 +7,7 @@
     * <a href="#ch2.3">2.3 帧率超过 16ms——三缓冲</a>
     * <a href="#ch2.4">2.4 四缓冲有用么</a>
     * <a href="#ch2.5">2.5 丢帧真的是丢弃了帧吗</a>
-<a href="#ch3">**3 framebuffer多缓冲的实现原理**</a>
+- <a href="#ch3">**3 framebuffer多缓冲的实现原理**</a>
     * <a href="#ch3.1">3.1 软件双缓冲</a>
     * <a href="#ch3.2">3.2 翻页（Page-flipping）双缓冲</a>
 
