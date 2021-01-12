@@ -55,7 +55,7 @@ Android 是基于 Linux 的，所以在 Android 设备上绘制图像同样也�
 
 设显示一帧的时间为 T，生成一帧的时间为 1.5T，如下图所示：
 
-![Slow draw tearing](images/slow_draw_tearing.png "Slow draw tearing")
+![Slow draw tearing](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E6%98%BE%E7%A4%BA%E7%B3%BB%E7%BB%9F%E4%B9%8B%E2%80%94%E2%80%94framebuffer%E5%92%8CVsync/images/slow_draw_tearing.png "Slow draw tearing")
 
 可以看到，当第一个显示帧时机到（时间T），因为生成帧还没有完成，framebuffer 中只存储了第一帧的 2/3，这个时候 GPU 取过去的也只有第一帧的 2/3；
 
@@ -69,7 +69,7 @@ Android 是基于 Linux 的，所以在 Android 设备上绘制图像同样也�
 
 设显示一帧的时间为 1.5T，生成一帧的时间为 T，如下图所示：
 
-![Fast draw tearing](images/fast_draw_tearing.png "Fast draw tearing")
+![Fast draw tearing](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E6%98%BE%E7%A4%BA%E7%B3%BB%E7%BB%9F%E4%B9%8B%E2%80%94%E2%80%94framebuffer%E5%92%8CVsync/images/fast_draw_tearing.png "Fast draw tearing")
 
 可以看到，当第一个生成帧时机到（时间T），第一个完整帧已经生成了，但因为此时显示帧时机还未到，所以还不会显示到屏幕上；
 
@@ -91,17 +91,17 @@ Android 是基于 Linux 的，所以在 Android 设备上绘制图像同样也�
 
 先看看双缓冲+Vsync的情况：
 
-![Double buffering](images/double_buffering.png "Double buffering")
+![Double buffering](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E6%98%BE%E7%A4%BA%E7%B3%BB%E7%BB%9F%E4%B9%8B%E2%80%94%E2%80%94framebuffer%E5%92%8CVsync/images/double_buffering.png "Double buffering")
 
 如图所示，缓冲队列里有 A 和 B 两个帧缓冲区。在第一个 Vsync 信号到达时，缓冲区B 准备好了当前帧数据，可传送到显示设备，而缓冲区A 是空闲的，可用来保存新生成的下一帧数据；而第二个 Vsync 信号到达时，缓冲区A 用于显示，缓冲区B 则用于生成。像这样，A 和 B 两个缓冲区交替进行角色互换，保证在每一个 Vsync 信号到来时，显示端（Display）都可以从其中一个缓冲区中取得一个完整的新帧用于显示，而生成端（CPU/GPU）可以向另一个缓冲区填充下一帧数据。所以双缓冲+Vsync 保证了在显示端不会产生 tearing 现象。
 
 那如果只有双缓冲，没有 Vsync 又会怎样呢？我们可以看一下下面的示意图：
 
-![Jank without sync](images/jank_without_sync.png "Jank without sync")
+![Jank without sync](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E6%98%BE%E7%A4%BA%E7%B3%BB%E7%BB%9F%E4%B9%8B%E2%80%94%E2%80%94framebuffer%E5%92%8CVsync/images/jank_without_sync.png "Jank without sync")
 
 如图所示，在第一个 Vsync 信号到达时，虽然缓冲队列中准备好了第1帧的数据可用于显示端进行显示，但生成端没有触发第2帧的生成，该过程延迟到了第二个 Vsync 信号快要到达的时候，且一直持续到第二个 Vsync 信号开始之后；在第二个 Vsync 信号到达后，显示端从缓冲队列中取到的可用缓冲还是上一个存储了第1帧的缓冲区，因为存储第2帧的缓冲区还没有接收完数据，于是此时仍然显示的是第1帧。这样，第1帧多显示了一次，这个叫 **jank现象**，在用户看来是画面产生了卡顿。如果我们加上 Vsync 机制，让第2帧的生成过程提速到第一个 Vsync 信号产生之时，则我们会得到一个可靠的动画，如下图所示：
 
-![Drawing with vsync](images/drawing_with_vsync.png "Drawing with vsync")
+![Drawing with vsync](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E6%98%BE%E7%A4%BA%E7%B3%BB%E7%BB%9F%E4%B9%8B%E2%80%94%E2%80%94framebuffer%E5%92%8CVsync/images/drawing_with_vsync.png "Drawing with vsync")
 
 由此可见，要实现可靠的动画，双缓冲和 Vsync 缺一不可，解决 jank问题需要 Vsync，解决 tearing问题需要双缓冲和 Vsync。
 
@@ -111,7 +111,7 @@ Android 是基于 Linux 的，所以在 Android 设备上绘制图像同样也�
 
 我们看一下 Google IO 给出的示意图：
 
-![Jank more 16ms](images/jank_more_16ms.png "Jank more 16ms")
+![Jank more 16ms](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E6%98%BE%E7%A4%BA%E7%B3%BB%E7%BB%9F%E4%B9%8B%E2%80%94%E2%80%94framebuffer%E5%92%8CVsync/images/jank_more_16ms.png "Jank more 16ms")
 
 我们看到，当帧率超过 16ms，采用双缓冲机制仍然可能产生 jank现象。具体来说，当第一个 Vsync 到达时，生成帧缓冲区B 还没有写完下一帧的数据，缓冲队列中只有缓冲区A 是可以显示的，于是只能再一次显示缓冲区A 中的数据，产生了第一个 jank现象；当第二个 Vsync 到达时，缓冲区B 终于可用了，于是显示缓冲区B 的数据，同时将生成的下一帧数据保存到空闲缓冲区A，但是生成时间又一次超过了 16ms，导致第三个 Vsync 到达时，缓冲区A 也不可用，只能继续显示缓冲区B，于是产生了第二个 jank现象。
 
@@ -119,7 +119,7 @@ Android 是基于 Linux 的，所以在 Android 设备上绘制图像同样也�
 
 这段无事可做的时间区域之所以存在，是因为这期间生成端没有空闲的缓存区可用了，假如我们增加一个空闲缓冲区，是不是正好就可以在弥补这段空闲区间呢？这就是 **三缓冲** 机制，如图所示：
 
-![Drawing with triple buffering](images/drawing_with_triple_buffering.png "Drawing with triple buffering")
+![Drawing with triple buffering](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E6%98%BE%E7%A4%BA%E7%B3%BB%E7%BB%9F%E4%B9%8B%E2%80%94%E2%80%94framebuffer%E5%92%8CVsync/images/drawing_with_triple_buffering.png "Drawing with triple buffering")
 
 可以看到，我们增加了第三个缓冲区C，在第一个 Vsync 到达时，对于显示端而言，缓冲区B 正在接收当前帧，缓冲区C 是空的，只有缓冲区A 是可用的，所以显示缓冲区A 的数据，第一个 jank现象 仍然不可避免，但是对于生成端而言，虽然缓冲区A 和 B 都不可用，但是缓冲区C 正好是空闲的，于是正好可以用于生成下一帧数据；当第二个 Vsync 到达时，对于显示端而言，指向的下一个缓冲区B 已经可用，缓冲区C 和 A 正在生成当前帧和下一帧数据，于是取缓冲区B 用于显示，对于生成端而言，缓冲区B 已经用于显示，缓冲区C 还在生成当前帧，只有缓冲区A 是空闲的，可用于生成下一帧数据。
 
@@ -131,13 +131,13 @@ Android 是基于 Linux 的，所以在 Android 设备上绘制图像同样也�
 
 我们可以考虑一下帧率超过 32ms 的情况，在这种情况下，一个帧的生成时间跨越了两个 Vsync 信号，此时可以推断，第二个 Vsync 信号到达时，缓冲区B 和 C 都因为生成帧没有结束和变得不可用，而缓冲区A 是唯一可以用于显示的，但对于生成端来说，再下一帧的数据已经没有缓冲区可用了，于是这个 Vsync 信号对于生成端来说是利用不到的。于是我们看到第一帧在屏幕上停留了 16*3=48ms。不难推断，在第五个 Vsync 信号达到时，因为没有新的显示缓冲区可用，缓冲区C 的帧将重复显示，产生 jank现象：
 
-![Jank triple buffering](images/jank_triple_buffering.png "Jank triple buffering")
+![Jank triple buffering](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E6%98%BE%E7%A4%BA%E7%B3%BB%E7%BB%9F%E4%B9%8B%E2%80%94%E2%80%94framebuffer%E5%92%8CVsync/images/jank_triple_buffering.png "Jank triple buffering")
 
 图中我们画出了两条红线，代表没有被利用到的 Vsync 信号。
 
 为了解决这个问题，我们可以依样画葫芦再增加一个缓冲区，由三缓冲变成四缓冲。
 
-![Four buffering](images/four_buffering.png "Four buffering")
+![Four buffering](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E6%98%BE%E7%A4%BA%E7%B3%BB%E7%BB%9F%E4%B9%8B%E2%80%94%E2%80%94framebuffer%E5%92%8CVsync/images/four_buffering.png "Four buffering")
 
 如上图，我们增加了一个缓冲区D，在第二个 Vsync 信号到达时弥补了三缓冲情况下的生成帧时机缺口。
 
@@ -176,7 +176,7 @@ framebuffer多缓冲一般有两种实现方法，我们以双缓冲为例来说
 
 在软件双缓冲实现中，framebuffer 本身全部作为 frontbuffer，其大小也只有一屏大小，而 backbuffer 由物理内存分配。新的帧生成只在 backbuffer 中进行，生成完毕后，等待下一个 Vsync 信号到达且在显示帧时机之前从 backbuffer 将新帧数据拷贝到 frontbuffer 中用于显示。如下图所示：
 
-![Software double buffer](images/software_double_buffer.png "Software double buffer")
+![Software double buffer](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E6%98%BE%E7%A4%BA%E7%B3%BB%E7%BB%9F%E4%B9%8B%E2%80%94%E2%80%94framebuffer%E5%92%8CVsync/images/software_double_buffer.png "Software double buffer")
 
 从图中可以看到，Vsync 到达后，有两个细分过程：先将数据从 backbuffer 拷贝到 frontbuffer，然后将数据从 frontbuffer 到显示，所以在这种情况下，需要对 Vsync 的触发时机和显示屏的扫描时机进行一个微调同步，保证在扫描数据之前，backbuffer 中的数据已经拷贝到 frontbuffer 中了，因为两块缓存分属不同的硬件，在拷贝时需要触发总线传输，所以需要在扫描前留足时间拷贝数据。
 
@@ -184,7 +184,7 @@ framebuffer多缓冲一般有两种实现方法，我们以双缓冲为例来说
 
 与软件双缓冲不同，翻页双缓冲技术中，framebuffer 本身拥有足够的空间，也就是说 backbuffer 和 frontbuffer 都在 framebuffer 中。在双缓冲实现中，只需要将 framebuffer 一分为二：buffer0 和 buffer1。然后设置两个指针：frontbuffer指针和 backbuffer指针，它们分别指向 buffer0 或 buffer1，当显示完一帧之后，两个指针的指向进行互换即可，就好像翻页一样。如下图所示：
 
-![Page flipping double buffer](images/page_flipping_double_buffer.png "Page flipping double buffer")
+![Page flipping double buffer](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E6%98%BE%E7%A4%BA%E7%B3%BB%E7%BB%9F%E4%B9%8B%E2%80%94%E2%80%94framebuffer%E5%92%8CVsync/images/page_flipping_double_buffer.png "Page flipping double buffer")
 
 在翻页双缓冲中，因为 frontbuffer 和 backbuffer 都在 framebuffer 中，生成帧直接在 framebuffer 中进行，所以无需通过总线拷贝数据，显示帧时机和生成帧时机也更可控，比软件双缓冲技术性能更好。
 
