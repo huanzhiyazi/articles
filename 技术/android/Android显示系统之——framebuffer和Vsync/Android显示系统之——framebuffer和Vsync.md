@@ -1,6 +1,15 @@
 <a name="index">**目录**</a>
 
 - <a href="#ch1">**1 什么是framebuffer**</a>
+- <a href="#ch2">**2 VSync 和 framebuffer多缓冲**</a>
+    * <a href="#ch2.1">2.1 屏幕刷新频率</a>
+    * <a href="#ch2.2">2.2 同步生成帧和显示帧——Vsync和双缓冲</a>
+    * <a href="#ch2.3">2.3 帧率超过 16ms——三缓冲</a>
+    * <a href="#ch2.4">2.4 四缓冲有用么</a>
+    * <a href="#ch2.5">2.5 丢帧真的是丢弃了帧吗</a>
+<a href="#ch3">**3 framebuffer多缓冲的实现原理**</a>
+    * <a href="#ch3.1">3.1 软件双缓冲</a>
+    * <a href="#ch3.2">3.2 翻页（Page-flipping）双缓冲</a>
 
 <br>
 <br>
@@ -177,6 +186,10 @@ framebuffer多缓冲一般有两种实现方法，我们以双缓冲为例来说
 ![Page flipping double buffer](images/page_flipping_double_buffer.png "Page flipping double buffer")
 
 在翻页双缓冲中，因为 frontbuffer 和 backbuffer 都在 framebuffer 中，生成帧直接在 framebuffer 中进行，所以无需通过总线拷贝数据，显示帧时机和生成帧时机也更可控，比软件双缓冲技术性能更好。
+
+<br>
+
+以上是对双缓冲实现原理的分析，对于三缓冲，只不过多设置一个 backbuffer 而已，也就是两个 backbuffer 和一个 frontbuffer，也可以用软件方法和翻页技术来实现，四缓冲也类似，大家可以自行分析。
 
 
 
