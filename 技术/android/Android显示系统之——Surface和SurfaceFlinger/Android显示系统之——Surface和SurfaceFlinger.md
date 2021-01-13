@@ -13,7 +13,7 @@
 
 ![Fullscreen frame compose](images/fullscreen_frame_compose.png "Fullscreen frame compose")
 
-这是一个视频播放器的界面，整个界面包含：状态栏（status bar）、系统导航栏栏（system bar）、APP主窗口（window）、视频播放窗口（media player）6 个部分，每个部分的界面都是独立渲染的，其中 status bar 和 system bar 都属于 SystemUI进程，window 属于 APP进程，media player可以属于 APP进程也可以有自己独立的进程。可见一个进程既可以独立渲染一个界面，也可以包含多个渲染服务，每个服务独立渲染一个界面。
+这是一个视频播放器的界面，整个界面包含：状态栏（status bar）、系统导航栏栏（system bar）、APP主窗口（window）、视频播放窗口（media player）4 个部分，每个部分的界面都是独立渲染的，其中 status bar 和 system bar 都属于 SystemUI进程，window 属于 APP进程，media player可以属于 APP进程也可以有自己独立的进程。可见一个进程既可以独立渲染一个界面，也可以包含多个渲染服务，每个服务独立渲染一个界面。
 
 总之，一个全屏帧是通过不同的渲染服务组合在一起的，即先由各自渲染服务独立生成部分帧，然后再通过一个合成服务将所有部分帧合成一个完整的全屏帧，这就是 **全屏帧的构成**。
 
