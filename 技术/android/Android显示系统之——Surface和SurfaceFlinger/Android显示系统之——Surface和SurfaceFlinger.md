@@ -34,19 +34,23 @@
 
 一个 Surface 的主要作用如下：
 
-1. 负责管理一个窗口的各种属性，比如宽高、标志位、密度、格式等。
+1. 负责管理一个窗口的各种属性，比如宽高、标志位、密度、格式（RGB颜色格式等）等。
 2. 提供画布工具，用于绘制图像，生成部分帧数据，比如我们通常的布局界面绘制用到了基于 Skia 的画布工具。图像数据还可以采用 OpenGL 绘制或者是视频解码器（通常由另一个接口 SurfaceView 实现）。
 3. 向帧缓冲队列（由合成服务提供）申请部分帧缓冲区，并将绘制好的图像数据写入部分帧缓冲区中。
 4. 将写好的部分帧缓冲区插入帧缓冲队列，等待帧合成服务读取。
 
-Surface 是一个 Binder 客户端，与 Binder 服务端 SurfaceFlinger 之间是 CS 的通信关系。
+Surface 是一个 Binder 客户端，其对应的 Binder 服务端就是帧合成服务 SurfaceFlinger（虽然在具体实现上与 Surface 直接对接的并不是 SurfaceFlinger，但是不影响在原理上这么理解，我们可以理解为在 Surface 和 SurfaceFlinger 之间还有若干代理服务器）。
 
 <br>
 <br>
 
 ### <a name="ch3">3 帧合成服务——SurfaceFlinger</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
 
+既然 SurfaceFlinger 的作用是提供帧的合成服务，那么在逻辑上，SurfaceFlinger 也会提供一个本地窗口，这个本地窗口承载的是所有部分帧的合成帧，即全屏帧，这个本地窗口的名字叫 FramebufferNativeWindow（本文简称 FNWindow），这是 FNWindow 与 Surface 的不同之处。相同是，因为都表示一个窗口，所以会有相似的表现形式，这体现在 Surface 和 FNWindow 在本地层都继承了相同的类——ANativeWindow。我们来看看一个本地窗口应该具备哪些属性和功能：
 
+```c
+
+```
 
 
 
