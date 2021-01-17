@@ -23,6 +23,8 @@
 部分帧 ⊆ 合成帧 ⊆ 全屏帧
 ```
 
+接下来分别简要介绍一下参与帧生成、合成和显示的各个组件，这些组件包括：部分帧渲染源——Surface、帧合成服务——SurfaceFlinger、部分帧缓冲队列——BufferQueue、Android 硬件抽象层 HAL 以及两个重要的 HAL 模块，接下来讲解一下各个模块之间的关系和交互流程，这样结合 [framebuffer和Vsync](https://github.com/huanzhiyazi/articles/issues/28)，整个 Android 的显示系统原理就呼之欲出了。
+
 <br>
 <br>
 
@@ -30,11 +32,21 @@
 
 在 Android 中，负责生成部分帧的接口叫 Surface，在应用层（java）和本地层（c/c++）中都有相应的实现。从逻辑上讲，可以把 Surface 当做一个窗口，所以它通常也叫本地窗口。比如，我们在 APP 中看到的渲染的主界面就是一个 Surface，我们看到的顶部状态栏是一个 Surface，底部系统导航栏也是一个 Surface。
 
-一个 Surface 的作用如下：
+一个 Surface 的主要作用如下：
 
 1. 负责管理一个窗口的各种属性，比如宽高、标志位、密度、格式等。
 2. 提供画布工具，用于绘制图像，生成部分帧数据，比如我们通常的布局界面绘制用到了基于 Skia 的画布工具。图像数据还可以采用 OpenGL 绘制或者是视频解码器（通常由另一个接口 SurfaceView 实现）。
-3. 向帧缓冲队列（由合成服务提供）申请
+3. 向帧缓冲队列（由合成服务提供）申请部分帧缓冲区，并将绘制好的图像数据写入部分帧缓冲区中。
+4. 将写好的部分帧缓冲区插入帧缓冲队列，等待帧合成服务读取。
+
+Surface 是一个 Binder 客户端，与 Binder 服务端 SurfaceFlinger 之间是 CS 的通信关系。
+
+<br>
+<br>
+
+### <a name="ch3">3 帧合成服务——SurfaceFlinger</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
+
+
 
 
 
