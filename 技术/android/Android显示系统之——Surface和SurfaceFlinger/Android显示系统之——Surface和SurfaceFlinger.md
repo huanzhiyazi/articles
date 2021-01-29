@@ -48,9 +48,38 @@ Surface 是一个 Binder 客户端，其对应的 Binder 服务端就是帧合�
 
 既然 SurfaceFlinger 的作用是提供帧的合成服务，那么在逻辑上，SurfaceFlinger 也会提供一个本地窗口，这个本地窗口承载的是所有部分帧的合成帧，即全屏帧，这个本地窗口的名字叫 FramebufferNativeWindow（本文简称 FNWindow），这是 FNWindow 与 Surface 的不同之处。相同是，因为都表示一个窗口，所以会有相似的表现形式，这体现在 Surface 和 FNWindow 在本地层都继承了相同的类——ANativeWindow。我们来看看一个本地窗口应该具备哪些属性和功能：
 
+*[/frameworks/native/libs/nativewindow/include/system/window.h](http://aospxref.com/android-11.0.0_r21/xref/frameworks/native/libs/nativewindow/include/system/window.h)*
 ```c
+// ...
+struct ANativeWindow
+{
+    // 本地窗口属性
+    const uint32_t flags;
+    const int   minSwapInterval;
+    const int   maxSwapInterval;
+    const float xdpi;
+    const float ydpi;
+    intptr_t    oem[4];
 
+    // 本地窗口功能
+    int     (*setSwapInterval)(struct ANativeWindow* window, int interval);
+    int     (*query)(const struct ANativeWindow* window, int what, int* value);
+    int     (*perform)(struct ANativeWindow* window, int operation, ... );
+    int     (*dequeueBuffer)(struct ANativeWindow* window, struct ANativeWindowBuffer** buffer, int* fenceFd);
+    int     (*queueBuffer)(struct ANativeWindow* window, struct ANativeWindowBuffer* buffer, int fenceFd);
+    int     (*cancelBuffer)(struct ANativeWindow* window, struct ANativeWindowBuffer* buffer, int fenceFd);
+}
+// ...
 ```
+
+可以看到，本地窗口的属性包括：
+
+- 与 surface 状态相关的标记
+- 支持的图像缓冲区数据交换间隔
+- 像素密度
+- 给原始设备制造商（OEM）保留的定制驱动空间（这表示如高通、联发科这样的 OEM 是可以根据其硬件需要对本地窗口进行适当的定制的）
+
+
 
 
 
