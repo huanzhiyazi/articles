@@ -169,6 +169,12 @@ http://aospxref.com/android-11.0.0_r21/xref/frameworks/base/core/java/android/vi
 
 
 
+https://source.android.google.cn/devices/graphics/arch-bq-gralloc?hl=zh-cn
+
+https://source.android.google.cn/devices/graphics
+
+
+
 
 
 
