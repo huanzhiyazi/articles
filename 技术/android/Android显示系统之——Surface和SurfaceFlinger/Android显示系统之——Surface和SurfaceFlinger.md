@@ -112,7 +112,7 @@ BufferQueue 作为共享资源，连接 Surface 和 SurfaceFlinger。其中，Su
 
 BufferQueue 有四个核心操作：
 
-1. **dequeueBuffer**：向 BufferQueue 申请一块空闲缓冲区，发起方为生产者（Surface）。
+1. **dequeueBuffer**：向 BufferQueue 申请一块空闲缓冲区（目前版本中主流的最大缓冲区数量为 64 个，之前为 32 个，通常设置为 2 个或者 3 个），发起方为生产者（Surface）。之前已经申请过的缓冲区可以被复用，如果不符合要求（比如还没有申请过，缓冲区参数不匹配等）则需要重新申请新的缓冲区。
 
 2. **queueBuffer**：向 BufferQueue 插入一块填充了有效数据的缓冲区，发起方为生产者（Surface）。
 
@@ -139,6 +139,12 @@ BufferQueue 有四个核心操作：
 1. 单元窗口与 BufferQueue 之间通过 binder 通信的方式进行 dequeue 和 queue 操作，单元窗口侧访问 BufferQueue 的 binder 客户端叫 IGraphicBufferProducer；而普通合成窗口与 BufferQueue 属于同一进程，只需直接方法调用即可。
 
 2. 单元窗口的生产目的是生成单元窗口数据，消费目的是用于窗口合成，包括 Client合成和 Device合成；而普通合成窗口的生产目的是进行 Client合成，消费目的是用于 Device合成和显示。
+
+另外，每个 Surface 都对应一个 BufferQueue，这样 SurfaceFlinger 从不同的 BufferQueue 中取出来的缓冲区则对应不同的单元窗口或普通合成窗口。即，Surface 和 BufferQueue 是一对第一的关系，而这两者和 SurfaceFlinger 则是多对一的关系，如下图所示：
+
+![BufferQueue relationship](images/buffer_queue_relationship.png "BufferQueue relationship")
+
+
 
 http://aospxref.com/android-11.0.0_r21/xref/frameworks/native/services/surfaceflinger/surfaceflinger.rc
 
