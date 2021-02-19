@@ -19,7 +19,7 @@
 
 我们约定，由一个渲染源生成的图像数据叫 **单元窗口**；再递归定义 **合成窗口** 为多个单元窗口合成或单元窗口与其它合成窗口合成所生成的图像数据；单元窗口与合成窗口统称为 **窗口**。显然，一个帧就是一个最终的合成窗口，那么除了帧以外的其它合成窗口我们称之为 **普通合成窗口**。
 
-接下来分别简要介绍一下参与帧生成、合成和显示的各个组件，这些组件包括：窗口的表示——Surface、帧合成服务——SurfaceFlinger、窗口缓冲队列——BufferQueue、Android 硬件抽象层 HAL 以及两个重要的 HAL 模块，然后讲解一下各个模块之间的关系和交互流程，这样结合 [framebuffer和Vsync](https://github.com/huanzhiyazi/articles/issues/28)，整个 Android 的显示系统原理就基本完整了。
+接下来分别简要介绍一下参与帧生成、合成和显示的各个组件，这些组件包括：窗口的表示——Surface、帧合成服务——SurfaceFlinger、窗口缓冲队列——BufferQueue、Android 硬件抽象层 HAL 以及两个重要的 HAL 模块，然后讲解一下各个组件之间的关系和交互流程，这样结合 [framebuffer和Vsync](https://github.com/huanzhiyazi/articles/issues/28)，整个 Android 的显示系统原理就基本完整了。
 
 <br>
 <br>
@@ -143,6 +143,81 @@ BufferQueue 有四个核心操作：
 另外，每个 Surface 都对应一个 BufferQueue，这样 SurfaceFlinger 从不同的 BufferQueue 中取出来的缓冲区则对应不同的单元窗口或普通合成窗口。即，Surface 和 BufferQueue 是一对第一的关系，而这两者和 SurfaceFlinger 则是多对一的关系，如下图所示：
 
 ![BufferQueue relationship](images/buffer_queue_relationship.png "BufferQueue relationship")
+
+<br>
+<br>
+
+### <a name="ch5">5 两个重要的 HAL 模块——Gralloc 和 HWC</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
+
+我们知道，Android 作为操作系统，需要和底层的硬件进行通信，却没有办法知道不同原始设备制造商所定制的硬件差异。这是因为，不同的硬件厂商出于维护商业竞争优势，不会统一硬件的实现细节。但是操作系统又有需要整合不同厂商硬件的需要，不同的 OEM 为了便于自身产品销售，也需要遵循部分标准以兼容操作系统。
+
+为此，Android 给不同类型的硬件提供了一整套统一的接口，这套接口就是一套协议，不同的硬件厂商必须实现这些接口，但是实现的细节却可以根据自身硬件的特性而有所不同。这样一来，操作系统对应用层屏蔽了同类型硬件因不同厂商定制的细节，只需关心接口的功能而进行调用即可。
+
+这一套接口就叫做硬件抽象层（HAL），顾名思义，是对不同硬件的一种抽象，抽出共同的部分，屏蔽差异的部分，即求同存异。根据功能的不同，HAL 会被分割成不同的模块，Android 提供不同 HAL 模块的接口，并由不同的硬件厂商实现这些接口，这些接口实现还会包含不同设备驱动程序的实现。
+
+孤立地讨论 HAL 意义不大，我们将其置于整个 Android 系统层次架构上来进行分析，其层次关系如下图所示：
+
+![Android 系统架构](images/ape_fwk_all.png "Android 系统架构")
+
+这是谷歌官方文档提供的架构图，具体说明可以参考[Android 系统架构](https://source.android.com/devices/architecture)。这里我们只针对显示系统中两个重要的 HAL 模块来做说明。
+
+在第 3 节中，我们针对显示系统中两个重要的 HAL 模块——Gralloc 和 HWC 的功能做了简单的介绍。突出显示系统部分之后，Android 的层次架构如下图所示：
+
+![hal](images/hal.png "hal")
+
+几个要点如下：
+
+1. 应用层的功能是绘制窗口，系统服务层作为应用层的服务方提供窗口合成服务。
+
+2. 系统服务层的功能是进行窗口合成，HAL 层作为系统服务层的服务方提供缓冲区分配服务（Gralloc）和合成策略服务（HWC）。
+
+3. Gralloc HAL 负责窗口缓冲区的分配，主要包括从何处分配内存、如何管理内存的申请和回收、实现共享内存机制；HWC HAL 提供窗口合成决策、负责 Device合成和显示。内核驱动层为 HAL 提供了访问文件设备的通道，需要注意的是，一个设备并不独属于一个 HAL 模块，比如 framebuffer 设备都会被 Gralloc 和 HWC 访问到。
+
+4. 内核驱动层的功能是访问文件设备，这里的设备可以是虚拟设备（ion设备等）或硬件设备（屏幕等）。
+
+5. 应用层和系统服务层之间用 binder 实现 IPC；系统服务和 HAL 之间用 hwbinder 实现 IPC；至于 HAL 访问内核驱动则是通过系统调用来实现的。
+
+6. Gralloc 的一个重要功能是提供内存共享，因为应用层、系统服务层、HAL层三者之间分属不同的进程，窗口缓冲区作为大容量进程共享资源，必然需要以共享内存的方式来提供，而此共享内存的实现机制则依赖于内核驱动层的 ion设备。在早期的 Android 版本中，因为 HAL 并没有和系统服务层进行进程隔离，合成缓冲区 framebuffer 不需要作为共享内存的形式而存在，只有绘制缓冲区因为涉及到 Surface 和 SurfaceFlinger 之间的跨进程访问而需要以共享内存的形式而存在，故当时是将绘制缓冲区用 [Android匿名共享内存（ashmem）](https://github.com/huanzhiyazi/articles/issues/27)的方式来实现的。ion 提供了一种更为抽象的内存共享方式，其实现原理与 ashmem 类似。
+
+7. HWC 在进行 Device合成之前，需要先决定哪些窗口可以进行 Device合成。具体而言，SurfaceFlinger 在执行合成之前，会询问 HWC 哪些窗口可以进行 Device合成，然后把不能进行 Device合成的窗口自行进行 Client合成作为普通合成窗口，然后统一与其它窗口一起交于 HWC 进行 Device合成。当然，在 SurfaceFlinger 询问 HWC 之前，也会有一些预处理，比如可以决定某些窗口强制进行 Client合成（比如有模糊背景需求的窗口）。关于 HWC 更加详细的作用描述可以参考谷歌官方文档——[硬件混合渲染器HAL](https://source.android.com/devices/graphics/hwc)。
+
+<br>
+<br>
+
+### <a name="ch6">6 显示系统各组件交互流程</a><a style="float:right;text-decoration:none;" href="#index">[Top]</a>
+
+以上我们单独介绍了显示系统各个重要组件的作用，并简单提及了某些组件之间的联系。本节作为一个总结，系统梳理一下各个组件间的交互流程是怎样的。
+
+以下是各组件交互结构图：
+
+![Android display process structure](images/android_display_process_structure.png "Android display process structure")
+
+首先在上图中，有两个我们之前没有介绍的模块：
+
+一个是图层（Layer），图层是 Surface 在其服务方的表示，在 SurfaceFlinger 中叫 Layer，在 HWC 中叫 hwLayer。从概念上讲理解到这一层就可以了，如果对细节感兴趣可以参考具体的源代码。
+
+另一个是 HWComposer，这个是 SurfaceFlinger 中用于与 HWC HAL 进行沟通的代理。
+
+接下来，我们具体介绍一下各个组件间的交互流程：
+
+在客户端，各个不同渲染源将借助 Surface 绘制单元窗口数据，作为生产者将数据传送到 BufferQueue。不同的渲染源可以是 Skia（通常的窗口布局绘制工具）、OpenGL（如游戏渲染）、视频解码等。作为用例，以后将以 WindowManagerService 原理分析来说明 Skia 在其中的工作机制。
+
+作为窗口缓冲区的 BufferQueue，将借助 Gralloc 进行缓冲区的申请和回收，Gralloc 借助 ion 对缓冲区以共享内存的方式进行访问。具体而言，面向单元窗口的缓冲区，来自于预分配的内存池；而面向普通合成窗口的缓冲区，来自于 framebuffer。Gralloc 屏蔽了这些共享内存的来源细节，SurfaceFlinger 只需要告诉 Gralloc 申请的内存用于何种用途即可，Gralloc 将据此决定具体的内存申请源头。
+
+SurfaceFlinger 执行合成的流程如下：
+
+1. **HWC 触发 vsync 信号**：vsync 信号将以回调的方式通知 SurfaceFlinger，SurfaceFlinger 收到 vsync 回调后开始执行下一帧的合成。
+
+2. **SurfaceFlinger 更新图层**：SurfaceFlinger 遍历各个有效图层，从其对应的 BufferQueue 中获取最新的单元窗口绘制数据，以对图层进行更新。这一步的 BufferQueue 中的缓冲区来自于预分配内存。
+
+3. **HWC 决策合成类型**：SurfaceFlinger 更新并准备好所有图层后，将图层参数告知 HWC HAL，HWC HAL 决定哪些图层可以执行 Device合成。
+
+4. **SurfaceFlinger 执行 Client合成**：如果有 HWC 不能处理的图层，SurfaceFlinger 统一将它们交给 OpenGL 执行合成，其合成的数据作为一个普通合成窗口也插入到其对应的 BufferQueue 中，同时 SurfaceFlinger 还充当该 BufferQueue 的消费者将普通合成窗口取出并作为一个新的合成图层与其它普通图层一起准备交与 HWC 进行 Device合成。注意，这一步 BufferQueue 中的缓冲区来自于 framebuffer，也就是说 Client合成数据已经直接 post 到 framebuffer 中了。
+
+5. **HWC 执行 Device合成**：HWC 将其余的图层连同 Client合成图层一起进行 Device合成。
+
+6. **HWC 将合成的帧 post 到 framebuffer 显示**：要将帧显示出来，最终还是要将其 post 到 framebuffer 的 frontbuffer 中。
+
 
 
 
