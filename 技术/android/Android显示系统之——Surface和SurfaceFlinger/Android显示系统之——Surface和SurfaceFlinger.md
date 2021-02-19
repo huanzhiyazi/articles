@@ -216,92 +216,17 @@ SurfaceFlinger 执行合成的流程如下：
 
 5. **HWC 执行 Device合成**：HWC 将其余的图层连同 Client合成图层一起进行 Device合成。
 
-6. **HWC 将合成的帧 post 到 framebuffer 显示**：要将帧显示出来，最终还是要将其 post 到 framebuffer 的 frontbuffer 中。
+6. **HWC 将合成的帧 post 到 framebuffer 显示**：要将帧显示出来，最终还是要将其 post 到 framebuffer 的 frontbuffer 中，这样显示控制器（display controller）才能从 framebuffer 中读取帧数据进行扫描。
 
+各组件涉及到的跨进程通信方式有：
 
+- **binder**：Surface（binder 客户端，以 IGraphicBufferProducer 作为代理） 与 SurfaceFlinger（binder 服务器，确切的说是 BufferQueue）之间。
 
+- **hwbinder**：SurfaceFlinger（binder 客户端）与 HAL（binder 服务器，包括 Gralloc 和 HWC）。
 
-http://aospxref.com/android-11.0.0_r21/xref/frameworks/native/services/surfaceflinger/surfaceflinger.rc
+- **共享内存**：单元窗口 Surface（生产者）与 SurfaceFlinger（消费者）和 HWC HAL（消费者）共享绘制内存；普通合成窗口 Surface（生产者）与 HWC（消费者）共享 Client合成内存。
 
-http://aospxref.com/android-11.0.0_r21/xref/system/core/rootdir/init.rc
-
-http://aospxref.com/android-11.0.0_r21/xref/frameworks/native/services/surfaceflinger/main_surfaceflinger.cpp?fi=startGraphicsAllocatorService#sm
-
-http://aospxref.com/android-11.0.0_r21/xref/frameworks/native/services/surfaceflinger/SurfaceFlinger.cpp#setupNewDisplayDeviceInternal
-
-http://aospxref.com/android-11.0.0_r21/xref/frameworks/native/services/surfaceflinger/DisplayHardware/HWComposer.cpp#149
-
-http://aospxref.com/android-11.0.0_r21/xref/hardware/interfaces/graphics/allocator/2.0/utils/passthrough/include/allocator-passthrough/2.0/GrallocLoader.h#getModuleMajorApiVersion
-
-http://aospxref.com/android-11.0.0_r21/xref/hardware/interfaces/graphics/composer/2.1/utils/passthrough/include/composer-passthrough/2.1/HwcLoader.h#45
-
-http://aospxref.com/android-11.0.0_r21/xref/hardware/qcom/display/msm8960/libgralloc/gralloc.cpp
-
-http://aospxref.com/android-11.0.0_r21/xref/hardware/qcom/display/msm8960/libhwcomposer/hwc.cpp#hwc_device_open
-
-http://aospxref.com/android-11.0.0_r21/xref/frameworks/native/services/surfaceflinger/NativeWindowSurface.cpp#28
-
-http://aospxref.com/android-11.0.0_r21/xref/frameworks/native/services/surfaceflinger/CompositionEngine/src/CompositionEngine.cpp#updateLayerStateFromFE
-
-http://aospxref.com/android-11.0.0_r21/xref/frameworks/native/services/surfaceflinger/CompositionEngine/src/Output.cpp#updateAndWriteCompositionState
-
-http://aospxref.com/android-11.0.0_r21/xref/frameworks/native/services/surfaceflinger/CompositionEngine/src/OutputLayer.cpp?fi=updateCompositionState#writeCompositionTypeToHWC
-
-http://aospxref.com/android-11.0.0_r21/xref/frameworks/native/services/surfaceflinger/CompositionEngine/src/Display.cpp#anyLayersRequireClientComposition
-
-http://aospxref.com/android-11.0.0_r21/xref/frameworks/native/services/surfaceflinger/CompositionEngine/src/RenderSurface.cpp
-
-http://aospxref.com/android-11.0.0_r21/xref/frameworks/native/services/surfaceflinger/DisplayHardware/FramebufferSurface.cpp#78
-
-http://aospxref.com/android-11.0.0_r21/xref/frameworks/native/services/surfaceflinger/DisplayHardware/HWC2.cpp
-
-http://aospxref.com/android-11.0.0_r21/xref/hardware/interfaces/graphics/composer/2.1/utils/
-
-http://aospxref.com/android-11.0.0_r21/xref/frameworks/native/libs/gui/Surface.cpp#perform
-
-http://aospxref.com/android-11.0.0_r21/xref/hardware/qcom/display/msm8960/libgralloc/alloc_controller.cpp
-
-http://aospxref.com/android-11.0.0_r21/xref/hardware/qcom/display/msm8960/libgralloc/ionalloc.cpp
-
-http://aospxref.com/android-11.0.0_r21/xref/frameworks/native/libs/gui/BufferQueueProducer.cpp
-
-http://aospxref.com/android-11.0.0_r21/xref/hardware/interfaces/graphics/composer/2.1/utils/hal/include/composer-hal/2.1/ComposerCommandEngine.h#executePresentDisplay
-
-http://aospxref.com/android-11.0.0_r21/xref/hardware/interfaces/graphics/composer/2.1/utils/hwc2on1adapter/include/hwc2on1adapter/HWC2On1Adapter.h#729
-
-http://aospxref.com/android-11.0.0_r21/xref/hardware/interfaces/graphics/composer/2.1/utils/hwc2on1adapter/HWC2On1Adapter.cpp#updateTypeChanges
-
-http://aospxref.com/android-11.0.0_r21/xref/hardware/qcom/display/msm8960/libhwcomposer/hwc_utils.h#300
-
-http://aospxref.com/android-11.0.0_r21/xref/hardware/qcom/display/msm8960/libhwcomposer/
-
-http://aospxref.com/android-11.0.0_r21/xref/frameworks/native/libs/gui/ConsumerBase.cpp#385
-
-http://aospxref.com/android-11.0.0_r21/xref/frameworks/native/services/surfaceflinger/Layer.cpp?fi=prepareCompositionState#prepareBasicGeometryCompositionState
-
-http://aospxref.com/android-11.0.0_r21/xref/frameworks/native/libs/gui/SurfaceComposerClient.cpp#connectLocked
-
-http://aospxref.com/android-11.0.0_r21/xref/frameworks/native/libs/gui/ISurfaceComposerClient.cpp#createSurface
-
-http://aospxref.com/android-11.0.0_r21/xref/frameworks/native/services/surfaceflinger/Client.cpp
-
-http://aospxref.com/android-11.0.0_r21/xref/frameworks/native/libs/gui/include/gui/ISurfaceComposerClient.h?fi=eFXSurfaceBufferQueue#eFXSurfaceBufferQueue
-
-http://aospxref.com/android-11.0.0_r21/xref/frameworks/base/core/jni/android_view_SurfaceControl.cpp
-
-http://aospxref.com/android-11.0.0_r21/xref/frameworks/native/libs/gui/BufferQueue.cpp#106
-
-http://aospxref.com/android-11.0.0_r21/xref/frameworks/native/libs/gui/ISurfaceComposer.cpp#createConnection
-
-http://aospxref.com/android-11.0.0_r21/xref/frameworks/base/services/core/java/com/android/server/wm/WindowStateAnimator.java?fi=createSurfaceLocked#createSurfaceLocked
-
-http://aospxref.com/android-11.0.0_r21/xref/frameworks/base/core/java/android/view/SurfaceControl.java#707
-
-
-
-https://source.android.google.cn/devices/graphics/arch-bq-gralloc?hl=zh-cn
-
-https://source.android.google.cn/devices/graphics
+最后，我们简单提及一下 Device合成的原理。目前，主流的 Device合成采用了一种叫 [hardware overlay](https://en.wikipedia.org/wiki/Hardware_overlay) 的技术。
 
 
 
