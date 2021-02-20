@@ -1,6 +1,11 @@
 <a name="index">**目录**</a>
 
 - <a href="#ch1">**1 一个帧的构成**</a>
+- <a href="#ch2">**2 窗口的表示——Surface**</a>
+- <a href="#ch3">**3 帧合成服务——SurfaceFlinger**</a>
+- <a href="#ch4">**4 窗口缓冲队列——BufferQueue**</a>
+- <a href="#ch5">**5 两个重要的 HAL 模块——Gralloc 和 HWC**</a>
+- <a href="#ch6">**6 显示系统各组件交互流程**</a>
 
 <br>
 <br>
@@ -226,8 +231,17 @@ SurfaceFlinger 执行合成的流程如下：
 
 - **共享内存**：单元窗口 Surface（生产者）与 SurfaceFlinger（消费者）和 HWC HAL（消费者）共享绘制内存；普通合成窗口 Surface（生产者）与 HWC（消费者）共享 Client合成内存。
 
-最后，我们简单提及一下 Device合成的原理。目前，主流的 Device合成采用了一种叫 [hardware overlay](https://en.wikipedia.org/wiki/Hardware_overlay) 的技术。
+最后，我们简单提及一下 Device合成的原理。目前，主流的 Device合成采用了一种叫 [overlay](https://en.wikipedia.org/wiki/Hardware_overlay) 的技术。简单来说，这是一种背景替换技术，类似于视频后期制作普遍用到的[色键(chroma key)技术](https://en.wikipedia.org/wiki/Chroma_key)。我们通常看到的电视里面的天气预报节目，主持人和气象背景图其实是后期合成的，在拍摄时，主持人的背景实际是一张纯绿色的幕布，和主持人一起组成一张前景图。在后期合成时，扫描前景图，并把绿色像素值替换为背景气象图同位置的像素值，这样便将前景主持人和背景气象图组合成我们最终看到的样子。
 
+![Weather report chroma key](images/weather_report_chroma_key.jpg "Weather report chroma key")
+
+我们再用一个示意图来理解一下有多个图层的情况：
+
+![Overlay sample](images/overlay_sample.png "Overlay sample")
+
+可以看到，合成的原理就是每次给最上层的前景层替换一个背景层。图中有 A B C 三个 overlay 图层，当扫描绿色遮罩的时候，优先取最上层（C）的像素值进行替换，如果也是遮罩色，再取次上层（B）的像素值替换，以此类推。
+
+关于 framebuffer 和 overlay 有一些有趣的话题，可以参考 [overlay 与 framebuffer 的区别](https://computergraphics.stackexchange.com/questions/5271/what-is-the-difference-in-overlay-and-framebuffer)，[SurfaceFlinger，framebuffer 和 overlay](https://www.mail-archive.com/android-porting@googlegroups.com/msg09615.html)
 
 
 
