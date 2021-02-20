@@ -16,7 +16,7 @@
 
 从微观来讲，一个帧的构成就是一个个的像素值，所以理论上来讲，最简单的办法就是由一个进程或服务搜集一屏画面的所有图像数据构成一帧即可。但是通常情况下一个全屏界面是由不同的进程来提供的，如图所示：
 
-![Fullscreen frame compose](images/fullscreen_frame_compose.png "Fullscreen frame compose")
+![Fullscreen frame compose](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E6%98%BE%E7%A4%BA%E7%B3%BB%E7%BB%9F%E4%B9%8B%E2%80%94%E2%80%94Surface%E5%92%8CSurfaceFlinger/images/fullscreen_frame_compose.png "Fullscreen frame compose")
 
 这是一个视频播放器的界面，整个界面包含：状态栏（status bar）、系统导航栏栏（system bar）、APP主窗口（main）、视频播放窗口（media player）4 个部分，每个部分的界面都是独立渲染的，其中 status bar 和 system bar 都属于 SystemUI进程，main 属于 APP进程，media player可以属于 APP进程也可以有自己独立的进程。可见一个进程既可以独立渲染一个界面，也可以包含多个渲染源，每个源独立渲染一个界面。
 
@@ -86,7 +86,7 @@ SurfaceFlinger 提供两种合成服务：
 
 目前主流的实现都是提前将不能进行 Device合成的窗口采用 Client合成，然后把 Client合成窗口和剩余的窗口一起进行 Device合成。所以，我们看到的合成模式通常如下图所示：
 
-![Compose process](images/compose_process.png "Compose process")
+![Compose process](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E6%98%BE%E7%A4%BA%E7%B3%BB%E7%BB%9F%E4%B9%8B%E2%80%94%E2%80%94Surface%E5%92%8CSurfaceFlinger/images/compose_process.png "Compose process")
 
 如图所示，在 SurfaceFlinger 中也有一个 Surface 充当普通合成窗口。值得注意的是，在 Android 5.0 之前，普通合成窗口并不是由 Surface 表示的，而是有一个专门的类叫——FramebufferNativeWindow，因为事实上，只有一个普通合成窗口，它的合成数据是存储在 framebuffer 中的，这也是其名字 FramebufferNativeWindow 的由来。在 Android 5.0 之后，普通合成窗口也由普通的 Surface 表示，因为无论是单元窗口还是普通合成窗口，都可以抽象出来相同的三个操作：产生数据、申请缓冲区、填充缓冲区。这样对于 BufferQueue 而言，不用区分是单元窗口还是合成窗口了，简化了接口设计。
 
@@ -137,7 +137,7 @@ BufferQueue 有四个核心操作：
 
 生产者（Surface）、BufferQueue、消费者（SurfaceFlinger）三者之间的通信过程和缓冲区状态迁移示意图如下所示：
 
-![BufferQueue](images/buffer_queue.png "BufferQueue")
+![BufferQueue](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E6%98%BE%E7%A4%BA%E7%B3%BB%E7%BB%9F%E4%B9%8B%E2%80%94%E2%80%94Surface%E5%92%8CSurfaceFlinger/images/buffer_queue.png "BufferQueue")
 
 值得注意的是，普通合成窗口 Surface 是在 SurfaceFlinger 里面的，即与 SurfaceFlinger 属于同一个进程，与单元窗口 Surface 的不同有二：
 
@@ -147,7 +147,7 @@ BufferQueue 有四个核心操作：
 
 另外，每个 Surface 都对应一个 BufferQueue，这样 SurfaceFlinger 从不同的 BufferQueue 中取出来的缓冲区则对应不同的单元窗口或普通合成窗口。即，Surface 和 BufferQueue 是一对第一的关系，而这两者和 SurfaceFlinger 则是多对一的关系，如下图所示：
 
-![BufferQueue relationship](images/buffer_queue_relationship.png "BufferQueue relationship")
+![BufferQueue relationship](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E6%98%BE%E7%A4%BA%E7%B3%BB%E7%BB%9F%E4%B9%8B%E2%80%94%E2%80%94Surface%E5%92%8CSurfaceFlinger/images/buffer_queue_relationship.png "BufferQueue relationship")
 
 <br>
 <br>
@@ -162,13 +162,13 @@ BufferQueue 有四个核心操作：
 
 孤立地讨论 HAL 意义不大，我们将其置于整个 Android 系统层次架构上来进行分析，其层次关系如下图所示：
 
-![Android 系统架构](images/ape_fwk_all.png "Android 系统架构")
+![Android 系统架构](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E6%98%BE%E7%A4%BA%E7%B3%BB%E7%BB%9F%E4%B9%8B%E2%80%94%E2%80%94Surface%E5%92%8CSurfaceFlinger/images/ape_fwk_all.png "Android 系统架构")
 
 这是谷歌官方文档提供的架构图，具体说明可以参考[Android 系统架构](https://source.android.com/devices/architecture)。这里我们只针对显示系统中两个重要的 HAL 模块来做说明。
 
 在第 3 节中，我们针对显示系统中两个重要的 HAL 模块——Gralloc 和 HWC 的功能做了简单的介绍。突出显示系统部分之后，Android 的层次架构如下图所示：
 
-![hal](images/hal.png "hal")
+![hal](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E6%98%BE%E7%A4%BA%E7%B3%BB%E7%BB%9F%E4%B9%8B%E2%80%94%E2%80%94Surface%E5%92%8CSurfaceFlinger/images/hal.png "hal")
 
 几个要点如下：
 
@@ -195,7 +195,7 @@ BufferQueue 有四个核心操作：
 
 以下是各组件交互结构图：
 
-![Android display process structure](images/android_display_process_structure.png "Android display process structure")
+![Android display process structure](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E6%98%BE%E7%A4%BA%E7%B3%BB%E7%BB%9F%E4%B9%8B%E2%80%94%E2%80%94Surface%E5%92%8CSurfaceFlinger/images/android_display_process_structure.png "Android display process structure")
 
 首先在上图中，有两个我们之前没有介绍的模块：
 
@@ -233,11 +233,11 @@ SurfaceFlinger 执行合成的流程如下：
 
 最后，我们简单提及一下 Device合成的原理。目前，主流的 Device合成采用了一种叫 [overlay](https://en.wikipedia.org/wiki/Hardware_overlay) 的技术。简单来说，这是一种背景替换技术，类似于视频后期制作普遍用到的[色键(chroma key)技术](https://en.wikipedia.org/wiki/Chroma_key)。我们通常看到的电视里面的天气预报节目，主持人和气象背景图其实是后期合成的，在拍摄时，主持人的背景实际是一张纯绿色的幕布，和主持人一起组成一张前景图。在后期合成时，扫描前景图，并把绿色像素值替换为背景气象图同位置的像素值，这样便将前景主持人和背景气象图组合成我们最终看到的样子。
 
-![Weather report chroma key](images/weather_report_chroma_key.jpg "Weather report chroma key")
+![Weather report chroma key](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E6%98%BE%E7%A4%BA%E7%B3%BB%E7%BB%9F%E4%B9%8B%E2%80%94%E2%80%94Surface%E5%92%8CSurfaceFlinger/images/weather_report_chroma_key.jpg "Weather report chroma key")
 
 我们再用一个示意图来理解一下有多个图层的情况：
 
-![Overlay sample](images/overlay_sample.png "Overlay sample")
+![Overlay sample](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E6%98%BE%E7%A4%BA%E7%B3%BB%E7%BB%9F%E4%B9%8B%E2%80%94%E2%80%94Surface%E5%92%8CSurfaceFlinger/images/overlay_sample.png "Overlay sample")
 
 可以看到，合成的原理就是每次给最上层的前景层替换一个背景层。图中有 A B C 三个 overlay 图层，当扫描绿色遮罩的时候，优先取最上层（C）的像素值进行替换，如果也是遮罩色，再取次上层（B）的像素值替换，以此类推。
 
