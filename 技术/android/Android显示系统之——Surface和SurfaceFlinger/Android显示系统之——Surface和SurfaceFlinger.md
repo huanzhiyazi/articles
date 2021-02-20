@@ -18,7 +18,7 @@
 
 ![Fullscreen frame compose](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E6%98%BE%E7%A4%BA%E7%B3%BB%E7%BB%9F%E4%B9%8B%E2%80%94%E2%80%94Surface%E5%92%8CSurfaceFlinger/images/fullscreen_frame_compose.png "Fullscreen frame compose")
 
-这是一个视频播放器的界面，整个界面包含：状态栏（status bar）、系统导航栏栏（system bar）、APP主窗口（main）、视频播放窗口（media player）4 个部分，每个部分的界面都是独立渲染的，其中 status bar 和 system bar 都属于 SystemUI进程，main 属于 APP进程，media player可以属于 APP进程也可以有自己独立的进程。可见一个进程既可以独立渲染一个界面，也可以包含多个渲染源，每个源独立渲染一个界面。
+这是一个视频播放器的界面，整个界面包含：状态栏（status bar）、系统导航栏（system bar）、APP主窗口（main）、视频播放窗口（media player）4 个部分，每个部分的界面都是独立渲染的，其中 status bar 和 system bar 都属于 SystemUI进程，main 属于 APP进程，media player可以属于 APP进程也可以有自己独立的进程。可见一个进程既可以独立渲染一个界面，也可以包含多个渲染源，每个源独立渲染一个界面。
 
 总之，一个帧是由不同的渲染源生成的，即先由各自渲染源独立生成子界面，然后再通过一个合成服务将所有子界面合成一个完整的帧。
 
@@ -98,7 +98,7 @@ Gralloc 和 HWC 都是由 init 进程触发启动的。
 
 SurfaceFlinger 启动后，有几个重要的初始化：
 
-1. Gralloc 客户端初始化，即建立 SurfaceFlinger 于 Gralloc HAL 之间的联系，用于缓冲区的分配。
+1. Gralloc 客户端初始化，即建立 SurfaceFlinger 与 Gralloc HAL 之间的联系，用于缓冲区的分配。
 
 2. GL渲染引擎初始化，用于 Client合成。
 
