@@ -190,7 +190,7 @@ framebuffer双缓冲一般有两种实现方法，其共同点是都会把缓冲
 
 从以上分析可以看出，framebuffer 虽然有两级缓冲，但是它不参与绘制任务，只是个显示缓冲区，双缓冲的 framebuffer 只是为了解决 tearing 问题。所以只有当我们再加上一个绘制缓冲区之后才可能组成我们在第二节中描述的双缓冲。抽象来看，在 N级缓冲中，必有一个充当显示缓冲区，即 framebuffer，当然在具体实现的时候，可能需要多一个绘制缓冲区将数据拷贝到 framebuffer 中，即实际可能是这样的：
 
-![Double buffer with framebuffer](images/double_buffer_with_framebuffer.png "Double buffer with framebuffer")
+![Double buffer with framebuffer](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E6%98%BE%E7%A4%BA%E7%B3%BB%E7%BB%9F%E4%B9%8B%E2%80%94%E2%80%94framebuffer%E5%92%8CVsync/images/double_buffer_with_framebuffer.png "Double buffer with framebuffer")
 
 
 
