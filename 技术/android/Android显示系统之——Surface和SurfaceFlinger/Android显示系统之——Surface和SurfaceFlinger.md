@@ -106,7 +106,27 @@ SurfaceFlinger 启动后，有几个重要的初始化：
 
 4. 初始化并启动事件队列（类似于 Android 应用层的 Handler 机制），诸如 Vsync 通知合成、显示屏修改插拔等都将以事件的形式通知 SurfaceFlinger 进行处理。
 
-值得注意的是，事件队列中显示屏增加事件产生后，将生成并初始化该显示屏对应的普通合成窗口 Surface。
+值得注意的是，事件队列中显示屏增加事件产生后，将生成并初始化该显示屏对应的普通合成窗口 Surface，同时还要启动两个重要的服务线程 EventThread（ET） 和 DispVsyncThread（DT）。
+
+**ET线程**
+
+该线程主要处理客户端单元窗口下一帧绘制任务的调度请求，即 Surface 向 ET 询问，我有一个新的帧（这里的帧指的是单元窗口图像数据）绘制任务，是否可以执行了？ET 需要判断 Vsync 信号时机是否到达，一旦时机到了便通知 Surface 执行绘制任务。
+
+ET线程是常驻的服务，ET线程在没有绘制任务的时候自我阻塞（wait），避免浪费 CPU 资源，直到有新的绘制任务且时机合适便自我唤醒（notify）。
+
+那么，ET 如何判断 Vsync 信号时机到呢？这需要用到另一个协同服务线程 DT线程。
+
+**DT线程**
+
+该线程的主要功能是计算下一个 Vsync 信号的时机，并在 Vsync 信号时机到时唤醒 ET线程去遍历新的绘制任务并执行；同时还接收来自 HWC 的硬件 Vsync 信号更新，与自身计算的 Vsync 信号时机进行比对和调整。
+
+同样，DT线程也是常驻的服务，在 Vsync 信号到来之前以及 HWC 通知更新之前是自我阻塞的，直到 Vsync 周期到或者 HWC 通知到才被唤醒。
+
+需要注意的是，Surface 产生一个 `下一帧绘制任务的调度请求`（requestNextVsync）是通过 binder 来完成的；而 ET 通知 Surface 执行 `下一帧绘制任务`（onVsync） 却是通过 socket 完成的。为什么后者是 socket？因为在这一步，Surface 某种意义上是 ET 的服务方，但是 Surface 从一开始就是作为一个 binder 客户端存在的，它不能同时是 SurfaceFlinger 的 binder 客户端和 binder 服务端，binder 是单工的，所以这里用了 socket 作为替代方案，因为 socket 是双工 IPC，细节可以参考 BitTube 机制。下图描述了 Surface 向 SurfaceFlinger 订阅 Vsync 信号的过程：
+
+![Surface register to Vsync](images/vsync_to_surface.png "Surface register to Vsync")
+
+简言之，Surface 告知 ET，我要执行一个新的绘制任务了；ET 将此绘制任务缓存，并等待 DT 通知 Vsync 信号是否到；DT 计算出下一个 Vsync 信号时机，然后自我唤醒，同时唤醒 ET 执行缓存的绘制任务，准确来说是通知 Surface 执行绘制任务。
 
 <br>
 <br>
