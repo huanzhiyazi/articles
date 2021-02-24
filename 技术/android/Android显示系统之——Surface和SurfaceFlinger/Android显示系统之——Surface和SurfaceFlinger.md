@@ -124,7 +124,7 @@ ET线程是常驻的服务，ET线程在没有绘制任务的时候自我阻塞�
 
 需要注意的是，Surface 产生一个 `下一帧绘制任务的调度请求`（requestNextVsync）是通过 binder 来完成的；而 ET 通知 Surface 执行 `下一帧绘制任务`（onVsync） 却是通过 socket 完成的。为什么后者是 socket？因为在这一步，Surface 某种意义上是 ET 的服务方，但是 Surface 从一开始就是作为一个 binder 客户端存在的，它不能同时是 SurfaceFlinger 的 binder 客户端和 binder 服务端，binder 是单工的，所以这里用了 socket 作为替代方案，因为 socket 是双工 IPC，细节可以参考 BitTube 机制。下图描述了 Surface 向 SurfaceFlinger 订阅 Vsync 信号的过程：
 
-![Surface register to Vsync](images/vsync_to_surface.png "Surface register to Vsync")
+![Surface register to Vsync](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E6%98%BE%E7%A4%BA%E7%B3%BB%E7%BB%9F%E4%B9%8B%E2%80%94%E2%80%94Surface%E5%92%8CSurfaceFlinger/images/vsync_to_surface.png "Surface register to Vsync")
 
 简言之，Surface 告知 ET，我要执行一个新的绘制任务了；ET 将此绘制任务缓存，并等待 DT 通知 Vsync 信号是否到；DT 计算出下一个 Vsync 信号时机，然后自我唤醒，同时唤醒 ET 执行缓存的绘制任务，准确来说是通知 Surface 执行绘制任务。
 
