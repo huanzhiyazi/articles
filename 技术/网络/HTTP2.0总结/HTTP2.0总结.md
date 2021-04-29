@@ -81,7 +81,7 @@ HTTP2.0 所有优化的基础在于帧的引入。帧是 HTTP2.0 消息格式中
 
 在 HTTP1.x 中，一个 HTTP 消息分为消息头和消息体，在 HTTP2.0 中，被分割成两个帧：头部帧（对应消息头）和数据帧（对应消息体）。
 
-![Binary framing layer](images/binary_framing_layer01.svg "Binary framing layer")
+![Binary framing layer](https://raw.githubusercontent.com/huanzhiyazi/articles/79906edd1ae9aa5e01829a7dafabe32166439062/%E6%8A%80%E6%9C%AF/%E7%BD%91%E7%BB%9C/HTTP2.0%E6%80%BB%E7%BB%93/images/binary_framing_layer01.svg "Binary framing layer")
 
 另外，在消息头比较大的的情况下，一个消息头会被分成一个头部帧和多个头部延伸帧（CONTINUATION frames），且在发送时，它们都是连续排列的，即这些帧中间不能插入其它类型的或其它流的帧。
 
@@ -95,7 +95,7 @@ HTTP2.0 中的消息即对应 HTTP1.x 中的一个请求或响应消息。一个
 
 下图描述了帧、消息、数据流三者的关系：
 
-![Streams messages frames](images/streams_messages_frames01.svg "Streams messages frames")
+![Streams messages frames](https://raw.githubusercontent.com/huanzhiyazi/articles/79906edd1ae9aa5e01829a7dafabe32166439062/%E6%8A%80%E6%9C%AF/%E7%BD%91%E7%BB%9C/HTTP2.0%E6%80%BB%E7%BB%93/images/streams_messages_frames01.svg "Streams messages frames")
 
 图中数据流1包含一条请求消息和一条响应消息，而每个消息都包含一个或者多个帧。可以看到，同一个数据流是双向流动的，包含一个完整的请求响应过程。
 
@@ -108,7 +108,7 @@ HTTP2.0 中的消息即对应 HTTP1.x 中的一个请求或响应消息。一个
 
 根据上一节，我们知道接收端在收到帧的时候，只需要按照流标识符进行分组，然后按发送次序拼接就可以重组成一个完整的请求或者响应消息。这样在理论上就保证了，在一个 TCP 连接上可以同时穿插发送多个数据流，或者说可以同时交叉传输属于不同数据流的互不依赖的帧，达到在同一个连接上并行发送多条消息的目的，而这在 HTTP1.x 的时候需要建立多个 TCP 连接，且每个连接对应一个消息。下图描述了多路复用传输帧的效果：
 
-![Multiplexing](images/multiplexing01.svg "Multiplexing")
+![Multiplexing](https://raw.githubusercontent.com/huanzhiyazi/articles/79906edd1ae9aa5e01829a7dafabe32166439062/%E6%8A%80%E6%9C%AF/%E7%BD%91%E7%BB%9C/HTTP2.0%E6%80%BB%E7%BB%93/images/multiplexing01.svg "Multiplexing")
 
 图中是一个传输快照，捕捉了同一个连接内并行的多个数据流。客户端正在向服务器传输一个 DATA 帧（数据流 5），与此同时，服务器正向客户端交错发送数据流 1 和数据流 3 的一系列帧。因此，一个连接上同时有三个并行数据流。
 
@@ -130,7 +130,7 @@ HTTP2.0 一举解决了所有这些低效的问题：浏览器可以在发现资
 
 HTTP2.0 对每一个数据流都可以设置权重和依赖，权重是一个 1-256 之间的整数，每个数据流可以指定另一个数据流的标识符作为父数据流从而构成依赖关系，这样最终可以呈现一个权重和依赖关系森林：
 
-![Stream prioritization](images/stream_prioritization01.svg "Stream prioritization")
+![Stream prioritization](https://raw.githubusercontent.com/huanzhiyazi/articles/79906edd1ae9aa5e01829a7dafabe32166439062/%E6%8A%80%E6%9C%AF/%E7%BD%91%E7%BB%9C/HTTP2.0%E6%80%BB%E7%BB%93/images/stream_prioritization01.svg "Stream prioritization")
 
 服务端在给数据流分配计算资源时，优先给被依赖的数据流分配，而在同一层的数据流，则根据权重不同，分配相应比例的资源。
 
@@ -163,7 +163,7 @@ HTTP2.0 提供了基于数据流的滑动窗口机制来实现应用层协议级
 
 HTTP2.0 推送模型如下图所示：
 
-![Push](images/push01.svg "Push")
+![Push](https://raw.githubusercontent.com/huanzhiyazi/articles/79906edd1ae9aa5e01829a7dafabe32166439062/%E6%8A%80%E6%9C%AF/%E7%BD%91%E7%BB%9C/HTTP2.0%E6%80%BB%E7%BB%93/images/push01.svg "Push")
 
 在客户端向服务器发起请求后（数据流 1），服务器除了对该请求要做出响应外，已经清楚知道后续一系列客户端需要的其它资源（数据流 2 和数据流 4）。这种情况下，不必等待客户端对后续资源发起新的请求了，而是直接将后续的资源也陆续发送给客户端即可，这样可以节省多余的请求流量，且减少网络延迟。
 
@@ -182,7 +182,7 @@ HTTP2.0 推送模型如下图所示：
 
 - 通信双方维护一组相同的头部字段索引表，包括静态索引表和动态索引表，其特点是对于双方都知晓的头部字段记录在本地，这样在发送消息的时候，只需要发送各个字段的索引号即可，接收方根据收到的索引号从索引表中即可还原真正的字段值。静态索引表在 HTTP2.0 规范中定义，提供了一个包含所有连接都可能使用的常用 HTTP 标头字段（例如，有效标头名称）的列表；动态索引表最初为空，将根据在特定连接内交换的值进行更新。在通信过程中，将不断地根据特定连接的实际情况更新双方的静态索引表和动态索引表。索引表的引入进一步减少了头部字段的大小。下图描述了采用索引号传输后，有效载荷的减少情况：
 
-![Header compression](images/header_compression01.svg "Header compression")
+![Header compression](https://raw.githubusercontent.com/huanzhiyazi/articles/79906edd1ae9aa5e01829a7dafabe32166439062/%E6%8A%80%E6%9C%AF/%E7%BD%91%E7%BB%9C/HTTP2.0%E6%80%BB%E7%BB%93/images/header_compression01.svg "Header compression")
 
 关于 HPACK 算法的细节，推荐一篇很好的 [文章](https://imququ.com/post/header-compression-in-http2.html)。
 
