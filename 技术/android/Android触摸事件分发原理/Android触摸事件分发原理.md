@@ -16,7 +16,7 @@
 
 一个触摸输入事件一般经由手机屏幕（硬件）-> 驱动程序 -> 操作系统（内核）-> framework（用户空间）这样一条传达路线。作为应用层开发者，我们关注触摸事件（以下简称事件）在用户空间中的分发机制。
 
-事件在用户空间中会在三个对象中进行派发，分别是：Activity，Window，View。整体来看，事件会在这三个对象中按照层次关系先自顶向下进行事件派发到达目标 View，再自底向上将目标 View 对事件的处理结果进行回传：
+事件在用户空间中主要会在三个对象中进行派发，分别是：Activity，Window，View。整体来看，事件会在这三个对象中按照层次关系先自顶向下进行事件派发到达目标 View，再自底向上将目标 View 对事件的处理结果进行回传：
 
 ![Dispatch from activity](https://raw.githubusercontent.com/huanzhiyazi/articles/master/%E6%8A%80%E6%9C%AF/android/Android%E8%A7%A6%E6%91%B8%E4%BA%8B%E4%BB%B6%E5%88%86%E5%8F%91%E5%8E%9F%E7%90%86/images/dispatch_from_activity.jpg "Dispatch from activity")
 
@@ -30,6 +30,8 @@
 6. 如果 R=false，Activity.onTouchEvent() 将进一步处理未被消费的 event；否则直接返回。 
 
 以上 6 步事件往返步骤中，PhoneWindow 只进行事件传递，于事件分发并无实质作用；Activity 的主要作用是对未处理（未消费）的事件进行收尾工作；而第 3 步中事件在 View 中的分发策略是整个事件分发原理的核心，接下来将讨论事件在 View 中的分发策略。
+
+需要注意的是，图中的事件经由内核后会先到达 DecorView，然后再经由 Activity 一路又回传到了 DecorView。这样做的目的是为了解耦，ViewRootImpl 设计成只直接和 View（DecorView） 联系；而 DecorView 设计成只和窗口回调接口（回调接口由 Activity or Dialog 实现）联系；Activity 一来在事件到来时需要拦截做一些预处理（onUserInteraction()），一来它不直接管理 DecorView，只有 PhoneWindow 才直接管理 DecorView，所以 Activity 会把事件先传给 PhoneWindow，最终由 PhoneWindow 传给 DecorView 执行真正的 View 事件分发策略。
 
 <br>
 <br>
